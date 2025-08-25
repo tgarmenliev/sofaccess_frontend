@@ -1,26 +1,45 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* Modern blue/purple palette for light mode */
+  --background-start-rgb: 245, 247, 255; /* soft blue background */
+  --background-end-rgb: 255, 255, 255;   /* white */
+  --foreground-rgb: 24, 28, 50;          /* deep navy text */
+  --primary-rgb: 56, 99, 246;            /* vibrant blue */
+  --primary-accent-rgb: 139, 92, 246;    /* purple accent */
+  --secondary-rgb: 232, 240, 254;        /* light blue secondary */
+  --muted-rgb: 120, 144, 156;            /* muted gray-blue */
+  --card-rgb: 255, 255, 255;             /* card white */
+  --border-rgb: 222, 226, 235;           /* subtle border */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background-start-rgb: 18, 22, 34;   /* deep navy background */
+    --background-end-rgb: 28, 32, 48;     /* slightly lighter navy */
+    --foreground-rgb: 230, 235, 255;      /* light text */
+    --primary-rgb: 139, 92, 246;          /* purple accent */
+    --primary-accent-rgb: 56, 99, 246;    /* blue accent */
+    --secondary-rgb: 36, 44, 66;          /* dark blue secondary */
+    --muted-rgb: 120, 144, 156;           /* muted gray-blue */
+    --card-rgb: 28, 32, 48;               /* card dark */
+    --border-rgb: 44, 52, 74;             /* subtle border */
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
