@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { FaBars, FaTimes } from "react-icons/fa";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -17,16 +19,20 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const textColor = scrolled ? "text-foreground" : "text-white";
+  const isHomePage = pathname === "/";
+  const scrolledOnHomepage = isHomePage && scrolled;
+  const isNotHomePage = !isHomePage;
+
+  const textColor = (scrolledOnHomepage || isNotHomePage) ? "text-foreground" : "text-white";
+  const logoColor = (scrolledOnHomepage || isNotHomePage) ? "text-primary" : "text-white";
   const mobileTextColor = "text-foreground dark:text-white";
-  const logoColor = scrolled ? "text-primary" : "text-white";
 
   return (
     <nav
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ease-in-out
         ${
-          scrolled
-            ? "backdrop-blur-xl bg-white/30 dark:bg-black/40 shadow-lg border-b border-white/30 dark:border-black/30" // Increased blur and reduced opacity
+          scrolledOnHomepage || isNotHomePage
+            ? "backdrop-blur-xl bg-white/30 dark:bg-black/30 shadow-lg border-b border-white/30 dark:border-black/30"
             : "bg-transparent"
         }`}
     >

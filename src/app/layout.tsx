@@ -11,7 +11,7 @@ const sofiaSans = Sofia_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SOFaccess - за достъпна София",
+  title: "SOFaccess",
   description:
     "Лесно навигирайте в София. Докладвайте препятствия и намирайте достъпни маршрути.",
 };
