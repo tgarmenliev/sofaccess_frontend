@@ -1,6 +1,34 @@
+"use client";
+import { useState } from "react";
 import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
 
 export default function ReportPage() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const payload = {
+      title: formData.get("location"),
+      description: formData.get("description"),
+      type: formData.get("barrier-type"),
+      lat: 42.6977, // временно → центъра на София
+      lng: 23.3219,
+    };
+
+    const res = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    console.log("Response:", data);
+    setLoading(false);
+  }
+
   return (
     <div className="bg-background text-foreground min-h-screen py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-xl mx-auto backdrop-blur-md bg-white/20 dark:bg-black/20 rounded-3xl shadow-2xl overflow-hidden p-8 transition-all duration-500 hover:shadow-primary/20">
@@ -16,7 +44,8 @@ export default function ReportPage() {
           </p>
         </div>
 
-        <form className="mt-12 space-y-8">
+        {/* ТУК вързах handleSubmit */}
+        <form onSubmit={handleSubmit} className="mt-12 space-y-8">
           {/* Location Section */}
           <div>
             <div className="flex items-center text-primary mb-2">
@@ -107,10 +136,11 @@ export default function ReportPage() {
           <div>
             <button
               type="submit"
+              disabled={loading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-full bg-primary shadow-lg hover:scale-105 transition-transform text-primary-foreground dark:text-white"
             >
               <FaPaperPlane className="mr-2" />
-              Изпрати сигнал
+              {loading ? "Изпращане..." : "Изпрати сигнал"}
             </button>
           </div>
         </form>
