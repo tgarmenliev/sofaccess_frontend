@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { FaMapMarkerAlt, FaWheelchair, FaExclamationTriangle, FaTimes, FaFilter } from "react-icons/fa";
+import dynamic from "next/dynamic";
+
+const MapComponent = dynamic(() => import("../components/Map"), { ssr: false });
 
 interface Report {
   id: number;
@@ -43,7 +46,7 @@ export default function MapPage() {
   return (
     <div className="relative flex flex-col md:flex-row h-screen pt-16">
       {/* Map Area */}
-      <div className="flex-1 bg-gray-200 dark:bg-gray-800 flex items-center justify-center p-4">
+      {/* <div className="flex-1 bg-gray-200 dark:bg-gray-800 flex items-center justify-center p-4">
         <div className="text-center p-8 rounded-lg shadow-lg backdrop-blur-sm bg-white/50 dark:bg-black/50 border border-border">
           <h3 className="text-3xl font-bold font-sofia text-foreground">Интерактивна карта</h3>
           <p className="text-muted-foreground mt-2">Тук ще бъде интегрирана картата.</p>
@@ -51,7 +54,8 @@ export default function MapPage() {
             (Показва {filteredReports.length} сигнала според филтъра)
           </p>
         </div>
-      </div>
+      </div> */}
+      <MapComponent />
 
       {/* Filter Panel (Desktop View) */}
       <div className="hidden md:block w-1/3 lg:w-1/4 bg-background border-l border-border p-6 overflow-y-auto">
