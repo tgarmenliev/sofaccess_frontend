@@ -1,21 +1,90 @@
 "use client";
 import { useState } from "react";
-import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
+import { 
+  FaMapPin, FaLocationArrow, FaExclamationTriangle, 
+  FaCamera, FaPaperPlane 
+} from "react-icons/fa";
 
 export default function ReportPage() {
   const [loading, setLoading] = useState(false);
+  const [address, setAddress] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
+  function formatAddress(item: any) {
+    if (item.address) {
+      const { road, house_number, suburb, city } = item.address;
+      let parts = [];
+      if (road) parts.push(road);
+      if (house_number) parts.push(house_number);
+      if (suburb) parts.push(suburb);
+      if (city && city === "Sofia") parts.push("София");
+
+      return parts.join(", ");
+    }
+
+    return item.display_name.split(",").slice(0, 3).join(", ");
+  }
+
+  async function searchAddress(query: string) {
+    setAddress(query);
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query
+        )}&addressdetails=1&limit=5&bounded=1&viewbox=23.20,42.63,23.45,42.75`,
+        {
+          headers: {
+            "User-Agent": "sof-access/1.0",
+            "Accept-Language": "bg",
+          },
+        }
+      );
+      const data = await res.json();
+      setSuggestions(data);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setSuggestions([]);
+    }
+  }
+
+  // текущо местоположение
+  function useCurrentLocation() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+          setAddress(
+            `Моето местоположение (${pos.coords.latitude.toFixed(
+              4
+            )}, ${pos.coords.longitude.toFixed(4)})`
+          );
+        },
+        (err) => console.error("Geolocation error:", err),
+        { enableHighAccuracy: true }
+      );
+    }
+  }
+
+  // изпращане към API
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
     const payload = {
-      title: formData.get("location"),
+      title: address,
       description: formData.get("description"),
       type: formData.get("barrier-type"),
-      lat: 42.6977, // временно → центъра на София
-      lng: 23.3219,
+      lat: coords?.lat || 42.6977, // fallback: София
+      lng: coords?.lng || 23.3219,
     };
 
     const res = await fetch("/api/reports", {
@@ -31,46 +100,65 @@ export default function ReportPage() {
 
   return (
     <div className="bg-background text-foreground min-h-screen py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl mx-auto backdrop-blur-md bg-white/20 dark:bg-black/20 rounded-3xl shadow-2xl overflow-hidden p-8 transition-all duration-500 hover:shadow-primary/20">
+      <div className="max-w-xl mx-auto backdrop-blur-md bg-white/20 dark:bg-black/20 rounded-3xl shadow-2xl overflow-hidden p-8">
+        
+        {/* Заглавие */}
         <div className="text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold font-sofia text-balance">
+          <h1 className="text-4xl md:text-5xl font-extrabold font-sofia">
             Докладвайте препятствие
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground max-w-lg mx-auto">
-            Помогнете ни да направим София по-достъпна, като съобщите за проблем в градската среда.
-          </p>
-          <p className="mt-2 text-sm text-red-500 font-semibold max-w-lg mx-auto">
-            Моля, имайте предвид, че платформата е предназначена само за докладване на проблеми, свързани с пешеходната инфраструктура (тротоари, рампи и др.).
+          <p className="mt-4 text-lg text-muted-foreground">
+            Помогнете ни да направим София по-достъпна, като съобщите за проблем.
           </p>
         </div>
 
-        {/* ТУК вързах handleSubmit */}
+        {/* Форма */}
         <form onSubmit={handleSubmit} className="mt-12 space-y-8">
+          
           {/* Location Section */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaMapPin className="h-6 w-6 mr-2" />
               <h2 className="text-xl font-semibold">Местоположение</h2>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Моля, посочете точното място на проблема.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 relative">
               <button
                 type="button"
-                className="flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground dark:text-white rounded-full font-medium text-sm shadow-md hover:scale-105 transition-transform w-full"
+                onClick={useCurrentLocation}
+                className="flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm shadow-md hover:scale-105 transition-transform w-full sm:w-auto"
               >
                 <FaLocationArrow className="h-4 w-4 mr-2" />
                 Използвай текущо местоположение
               </button>
-              <input
-                id="location"
-                name="location"
-                type="text"
-                required
-                className="block w-full px-4 py-3 border border-border rounded-full bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                placeholder="Или въведете адрес..."
-              />
+              <div className="relative w-full">
+                <input
+                  value={address}
+                  onChange={(e) => searchAddress(e.target.value)}
+                  className="block w-full px-4 py-3 border border-border rounded-full bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  placeholder="Или въведете адрес..."
+                  required
+                />
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    {suggestions.map((s, i) => (
+                      <li
+                        key={i}
+                        className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => {
+                          setAddress(formatAddress(s));
+                          setCoords({
+                            lat: parseFloat(s.lat),
+                            lng: parseFloat(s.lon),
+                          });
+                          setSuggestions([]);
+                        }}
+                      >
+                        {formatAddress(s)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
 
@@ -83,7 +171,7 @@ export default function ReportPage() {
             <select
               id="barrier-type"
               name="barrier-type"
-              className="mt-1 block w-full px-4 py-3 text-sm border border-border rounded-full bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-foreground"
+              className="block w-full px-4 py-3 text-sm border border-border rounded-full bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
             >
               <option>Счупен тротоар</option>
               <option>Стълби без рампа</option>
@@ -94,17 +182,14 @@ export default function ReportPage() {
           </div>
 
           {/* Description Section */}
-          <div>
-            <label htmlFor="description" className="sr-only">Описание</label>
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              required
-              className="block w-full px-4 py-3 border border-border rounded-2xl bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-              placeholder="Подробно описание на проблема..."
-            ></textarea>
-          </div>
+          <textarea
+            id="description"
+            name="description"
+            rows={4}
+            required
+            className="block w-full px-4 py-3 border border-border rounded-2xl bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            placeholder="Подробно описание на проблема..."
+          ></textarea>
 
           {/* Photo Upload Section */}
           <div>
@@ -112,37 +197,26 @@ export default function ReportPage() {
               <FaCamera className="h-6 w-6 mr-2" />
               <h2 className="text-xl font-semibold">Прикачи снимка</h2>
             </div>
-            <p className="text-sm text-muted-foreground mb-4 italic">
-              Снимката прави вашия сигнал много по-ефективен и помага за по-бързото му разрешаване.
-            </p>
             <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-xl">
-              <div className="space-y-1 text-center">
-                <svg className="mx-auto h-12 w-12 text-muted-foreground" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <div className="flex text-sm text-muted-foreground justify-center">
-                  <label htmlFor="file-upload" className="relative cursor-pointer font-medium text-primary hover:text-blue-700 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                    <span>Качи файл</span>
-                    <input id="file-upload" name="file-upload" type="file" className="sr-only" />
-                  </label>
-                  <p className="pl-1">или плъзни и пусни</p>
-                </div>
-                <p className="text-xs text-muted-foreground/80">PNG, JPG, GIF до 10MB</p>
-              </div>
+              <input id="file-upload" name="file-upload" type="file" className="sr-only" />
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer text-primary hover:text-blue-700"
+              >
+                Качи файл
+              </label>
             </div>
           </div>
-          
-          {/* Submit Button */}
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-full bg-primary shadow-lg hover:scale-105 transition-transform text-primary-foreground dark:text-white"
-            >
-              <FaPaperPlane className="mr-2" />
-              {loading ? "Изпращане..." : "Изпрати сигнал"}
-            </button>
-          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-105 transition-transform"
+          >
+            <FaPaperPlane className="mr-2" />
+            {loading ? "Изпращане..." : "Изпрати сигнал"}
+          </button>
         </form>
       </div>
     </div>
