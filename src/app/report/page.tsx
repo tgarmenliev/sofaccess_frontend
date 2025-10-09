@@ -1,11 +1,8 @@
 "use client";
 import { useState, useRef } from "react";
-import { 
-  FaMapPin, FaLocationArrow, FaExclamationTriangle, 
-  FaCamera, FaPaperPlane 
-} from "react-icons/fa";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
 
-// Bounding box for Sofia coordinates (min_lon, min_lat, max_lon, max_lat)
+// Bounding box for Sofia coordinates
 const SOFIA_BOUNDING_BOX = {
   minLat: 42.63,
   maxLat: 42.75,
@@ -13,7 +10,6 @@ const SOFIA_BOUNDING_BOX = {
   maxLng: 23.45,
 };
 
-// Function to check if coordinates are within Sofia
 const isWithinSofia = (lat: number, lng: number): boolean => {
   return (
     lat >= SOFIA_BOUNDING_BOX.minLat &&
@@ -28,7 +24,8 @@ export default function ReportPage() {
   const [address, setAddress] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "warning" } | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatAddress = (item: any) => {
@@ -56,9 +53,7 @@ export default function ReportPage() {
       return;
     }
 
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
       try {
@@ -74,7 +69,9 @@ export default function ReportPage() {
           }
         );
         const data = await res.json();
-        const uniqueSuggestions = Array.from(new Set(data.map((item: any) => JSON.stringify(item)))).map((item: any) => JSON.parse(item));
+        const uniqueSuggestions = Array.from(new Set(data.map((item: any) => JSON.stringify(item)))).map((item: any) =>
+          JSON.parse(item)
+        );
         setSuggestions(uniqueSuggestions);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -93,7 +90,7 @@ export default function ReportPage() {
 
           if (!isWithinSofia(latitude, longitude)) {
             setMessage({
-              text: "Вашето местоположение е извън София. Моля, докладвайте проблеми само от територията на града.",
+              text: "Вашето местоположение е извън София. Моля, докладвайте само проблеми в града.",
               type: "warning",
             });
             setAddress("");
@@ -104,132 +101,101 @@ export default function ReportPage() {
 
           try {
             const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=bg`,
-              {
-                headers: {
-                  "User-Agent": "sof-access/1.0",
-                },
-              }
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=bg`
             );
             const data = await res.json();
             const fullAddress = formatAddress(data);
             setAddress(fullAddress);
             setCoords({ lat: latitude, lng: longitude });
-          } catch (err) {
-            console.error("Reverse geocoding error:", err);
+          } catch {
             setMessage({
-              text: "Не можахме да намерим точен адрес за вашето местоположение, но координатите са запазени.",
+              text: "Не успяхме да намерим точен адрес.",
               type: "error",
             });
-            setAddress(`Координати: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-            setCoords({ lat: latitude, lng: longitude });
           } finally {
             setLoading(false);
           }
         },
-        (err) => {
-          console.error("Geolocation error:", err);
-          setMessage({
-            text: "Не можахме да получим вашето местоположение. Проверете дали сте дали разрешение.",
-            type: "error",
-          });
+        () => {
+          setMessage({ text: "Няма достъп до местоположението.", type: "error" });
           setLoading(false);
-        },
-        { enableHighAccuracy: true }
+        }
       );
     } else {
-      setMessage({
-        text: "Геолокацията не се поддържа от вашия браузър.",
-        type: "error",
-      });
+      setMessage({ text: "Геолокацията не се поддържа.", type: "error" });
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!coords) {
-      setMessage({
-        text: "Моля, въведете валиден адрес или използвайте текущото си местоположение.",
-        type: "error",
-      });
+      setMessage({ text: "Моля, въведете валиден адрес или използвайте текущото си местоположение.", type: "error" });
       return;
     }
     setLoading(true);
     setMessage(null);
 
-    const formData = new FormData(e.currentTarget);
-    const payload = {
-      address: address,
-      description: formData.get("description"),
-      type: formData.get("barrier-type"),
-      lat: coords.lat,
-      lng: coords.lng,
-    };
-
     try {
-        const res = await fetch("/api/reports", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-            setMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
-        } else {
-            setMessage({ text: "Неуспешно изпращане на сигнала. Моля, опитайте отново.", type: "error" });
-        }
-        const data = await res.json();
-        console.log("Response:", data);
+      const form = e.currentTarget as HTMLFormElement;
+      const fd = new FormData();
+      fd.append("address", address);
+      fd.append("description", (form.elements.namedItem("description") as HTMLInputElement).value);
+      fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
+      fd.append("lat", String(coords.lat));
+      fd.append("lng", String(coords.lng));
+      if (file) fd.append("file", file);
+
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        body: fd, // no headers!
+      });
+
+      const data = await res.json();
+      console.log("Server response:", data);
+
+      if (res.ok) {
+        setMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
+        form.reset();
+        setFile(null);
+        setAddress("");
+        setCoords(null);
+      } else {
+        setMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
+      }
     } catch (err) {
-        console.error("Submit error:", err);
-        setMessage({ text: "Възникна грешка при изпращането. Моля, проверете връзката си.", type: "error" });
+      console.error("Submit error:", err);
+      setMessage({ text: "Възникна грешка при изпращането. Провери конзолата.", type: "error" });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
   const getMessageColor = () => {
     if (!message) return "";
-    switch (message.type) {
-      case "success":
-        return "text-green-500";
-      case "error":
-        return "text-red-500";
-      case "warning":
-        return "text-yellow-500";
-      default:
-        return "";
-    }
+    return message.type === "success"
+      ? "text-green-500"
+      : message.type === "error"
+      ? "text-red-500"
+      : "text-yellow-500";
   };
 
   return (
     <div className="bg-background text-foreground min-h-screen py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-xl mx-auto backdrop-blur-md bg-white/20 dark:bg-black/20 rounded-3xl shadow-2xl overflow-hidden p-8">
-        
-        {/* Заглавие */}
         <div className="text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold font-sofia">
-            Докладвай препятствие
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Помогнете ни да направим София по-достъпна, като съобщите за проблем.
-          </p>
+          <h1 className="text-4xl md:text-5xl font-extrabold font-sofia">Докладвай препятствие</h1>
+          <p className="mt-4 text-lg text-muted-foreground">Помогнете ни да направим София по-достъпна.</p>
         </div>
 
-        {/* Форма */}
         <form onSubmit={handleSubmit} className="mt-12 space-y-8">
-          
-          {/* Location Section */}
+          {/* Location */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaMapPin className="h-6 w-6 mr-2" />
               <h2 className="text-xl font-semibold">Местоположение</h2>
             </div>
-            {message && (
-                <div className={`mt-2 p-3 rounded-md text-sm font-medium ${getMessageColor()}`}>
-                    {message.text}
-                </div>
-            )}
+            {message && <div className={`mt-2 p-3 rounded-md text-sm font-medium ${getMessageColor()}`}>{message.text}</div>}
             <div className="flex flex-col sm:flex-row gap-4 relative">
               <button
                 type="button"
@@ -256,10 +222,7 @@ export default function ReportPage() {
                         className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => {
                           setAddress(formatAddress(s));
-                          setCoords({
-                            lat: parseFloat(s.lat),
-                            lng: parseFloat(s.lon),
-                          });
+                          setCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) });
                           setSuggestions([]);
                           setMessage(null);
                         }}
@@ -273,7 +236,7 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Barrier Type Section */}
+          {/* Type */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaExclamationTriangle className="h-6 w-6 mr-2" />
@@ -288,11 +251,13 @@ export default function ReportPage() {
               <option>Стълби без рампа</option>
               <option>Счупен асансьор/ескалатор</option>
               <option>Паркирано превозно средство</option>
+              <option>Оправен асансьор/ескалатор</option>
+              <option>Достъпен тротоар</option>
               <option>Друго</option>
             </select>
           </div>
 
-          {/* Description Section */}
+          {/* Description */}
           <textarea
             id="description"
             name="description"
@@ -302,19 +267,23 @@ export default function ReportPage() {
             placeholder="Подробно описание на проблема..."
           ></textarea>
 
-          {/* Photo Upload Section */}
+          {/* Image upload */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaCamera className="h-6 w-6 mr-2" />
               <h2 className="text-xl font-semibold">Прикачи снимка</h2>
             </div>
             <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-xl">
-              <input id="file-upload" name="file-upload" type="file" className="sr-only" />
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer text-primary hover:text-blue-700"
-              >
-                Качи файл
+              <input
+                id="file-upload"
+                name="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="sr-only"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer text-primary hover:text-blue-700">
+                {file ? file.name : "Качи файл"}
               </label>
             </div>
           </div>
