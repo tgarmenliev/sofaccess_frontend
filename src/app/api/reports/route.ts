@@ -48,6 +48,8 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
+    await supabaseAdmin.rpc('increment_total_reports');
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("Error inserting:", err);
@@ -91,6 +93,9 @@ export async function PUT(req: Request) {
       .in("id", ids);
 
     if (error) throw error;
+
+    await supabaseAdmin.rpc('increment_resolved_reports', { count: ids.length });
+    
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error("PUT error:", err);
