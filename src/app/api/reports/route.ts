@@ -120,3 +120,27 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  try {
+    const { id, sent } = await req.json();
+
+    if (id === undefined || sent === undefined) {
+      return NextResponse.json({ success: false, error: "ID and sent status are required" }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("reports")
+      .update({ 
+        sent: sent
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("PATCH error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}

@@ -1,9 +1,7 @@
-// app/admin/page.tsx
-
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import Link from "next/link";
-import { FaTrash } from "react-icons/fa"; // Import trash icon
+import { FaTrash, FaEye, FaEyeSlash } from "react-icons/fa";
 
 interface Report {
   id: number;
@@ -12,12 +10,12 @@ interface Report {
   description: string;
   type: string;
   image_url?: string;
+  sent: boolean;
 }
 
-// Helper function to format date and add 3 hours
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  date.setHours(date.getHours());
+  date.setHours(date.getHours() + 3);
   return date.toLocaleString("bg-BG", {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit'
@@ -28,8 +26,10 @@ export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [updatingSentId, setUpdatingSentId] = useState<number | null>(null);
   const [changedIds, setChangedIds] = useState<Set<number>>(new Set());
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [expandedReportId, setExpandedReportId] = useState<number | null>(null);
 
   async function fetchReports() {
     try {
@@ -47,9 +47,7 @@ export default function AdminPage() {
     }
   }
   
-  useEffect(() => {
-    fetchReports();
-  }, []);
+  useEffect(() => { fetchReports(); }, []);
 
   const handleCheckboxChange = (id: number) => {
     const newChangedIds = new Set(changedIds);
@@ -86,7 +84,6 @@ export default function AdminPage() {
     }
   };
   
-  // New handler for deleting a report
   const handleDelete = async (id: number) => {
     if (!window.confirm(`Сигурен ли си, че искаш да изтриеш сигнал #${id}?`)) {
       return;
@@ -96,7 +93,6 @@ export default function AdminPage() {
       const res = await fetch(`/api/reports?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
         setMessage({ text: `Сигнал #${id} е изтрит успешно.`, type: 'success'});
-        // Update state to remove the report from the UI immediately
         setReports(prevReports => prevReports.filter(report => report.id !== id));
       } else {
         const data = await res.json();
@@ -104,6 +100,35 @@ export default function AdminPage() {
       }
     } catch (err) {
       setMessage({ text: "Възникна грешка при комуникацията.", type: 'error'});
+    }
+  };
+
+  const handleSentChange = async (reportId: number, currentStatus: boolean) => {
+    setUpdatingSentId(reportId);
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: reportId, sent: !currentStatus })
+      });
+
+      if (res.ok) {
+        setReports(reports.map(r => r.id === reportId ? { ...r, sent: !currentStatus } : r));
+      } else {
+        setMessage({ text: "Грешка при обновяване на статуса.", type: "error" });
+      }
+    } catch (err) {
+        setMessage({ text: "Възникна грешка.", type: "error" });
+    } finally {
+      setUpdatingSentId(null);
+    }
+  };
+
+  const handleToggleDescription = (id: number) => {
+    if (expandedReportId === id) {
+      setExpandedReportId(null);
+    } else {
+      setExpandedReportId(id);
     }
   };
 
@@ -119,50 +144,76 @@ export default function AdminPage() {
         <table className="w-full text-sm text-left">
           <thead className="bg-muted text-muted-foreground uppercase">
             <tr>
-              <th scope="col" className="px-6 py-3">Действия</th>
-              <th scope="col" className="px-6 py-3">ID</th>
-              <th scope="col" className="px-6 py-3">Дата и час</th>
-              <th scope="col" className="px-6 py-3">Адрес</th>
-              <th scope="col" className="px-6 py-3">Тип</th>
-              <th scope="col" className="px-6 py-3">Снимка</th>
-              <th scope="col" className="px-6 py-3 text-center">Разрешен</th>
+              <th scope="col" className="px-4 py-3 w-32 text-center">Действия</th>
+              <th scope="col" className="px-4 py-3 w-40">Дата и час</th>
+              <th scope="col" className="px-4 py-3">Адрес</th>
+              <th scope="col" className="px-4 py-3 w-40">Тип</th>
+              <th scope="col" className="px-4 py-3 w-28">Снимка</th>
+              <th scope="col" className="px-4 py-3 w-28 text-center">Изпратен</th>
+              <th scope="col" className="px-4 py-3 w-28 text-center">Разрешен</th>
             </tr>
           </thead>
           <tbody>
             {reports.map((report) => (
-              <tr key={report.id} className="border-b border-border hover:bg-muted/50">
-                <td className="px-6 py-4">
-                  <button onClick={() => handleDelete(report.id)} className="text-red-500 hover:text-red-700 transition-colors">
-                    <FaTrash />
-                  </button>
-                </td>
-                <td className="px-6 py-4 font-medium">{report.id}</td>
-                <td className="px-6 py-4">{formatDate(report.created_at)}</td>
-                <td className="px-6 py-4">{report.title}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    report.type === 'Разрешен' ? 'bg-green-500/20 text-green-700' : 'bg-red-500/20 text-red-700'
-                  }`}>
-                    {report.type}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  {report.image_url ? (
-                    <Link href={report.image_url} target="_blank" className="text-primary hover:underline">
-                      Виж снимка
-                    </Link>
-                  ) : 'Няма'}
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 rounded text-primary focus:ring-primary disabled:opacity-50"
-                    checked={report.type === 'Разрешен' || changedIds.has(report.id)}
-                    disabled={report.type === 'Разрешен'}
-                    onChange={() => handleCheckboxChange(report.id)}
-                  />
-                </td>
-              </tr>
+              <Fragment key={report.id}>
+                <tr className="border-b border-border hover:bg-muted/50">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-4">
+                      <button onClick={() => handleToggleDescription(report.id)} className="text-blue-500 hover:text-blue-700 transition-colors" title="Покажи описание">
+                        {expandedReportId === report.id ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                      <button onClick={() => handleDelete(report.id)} className="text-red-500 hover:text-red-700 transition-colors" title="Изтрий сигнал">
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs">{formatDate(report.created_at)}</td>
+                  <td className="px-4 py-3 whitespace-normal break-words">{report.title}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      report.type === 'Разрешен' ? 'bg-green-500/20 text-green-700' : 'bg-red-500/20 text-red-700'
+                    }`}>
+                      {report.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {report.image_url ? (
+                      <Link href={report.image_url} target="_blank" className="text-primary hover:underline">
+                        Виж
+                      </Link>
+                    ) : 'Няма'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {updatingSentId === report.id ? (
+                      <div className="w-5 h-5 border-2 border-dashed border-primary rounded-full animate-spin mx-auto"></div>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5 rounded text-primary focus:ring-primary"
+                        checked={report.sent}
+                        onChange={() => handleSentChange(report.id, report.sent)}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 rounded text-primary focus:ring-primary disabled:opacity-50"
+                      checked={report.type === 'Разрешен' || changedIds.has(report.id)}
+                      disabled={report.type === 'Разрешен'}
+                      onChange={() => handleCheckboxChange(report.id)}
+                    />
+                  </td>
+                </tr>
+                {expandedReportId === report.id && (
+                  <tr className="bg-muted/30">
+                    <td colSpan={7} className="p-4">
+                      <h4 className="font-semibold mb-2">Пълно описание:</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{report.description}</p>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
