@@ -15,7 +15,11 @@ export interface Report {
   image_url?: string;
 }
 
-const MapComponent = dynamic(() => import("../components/Map"), { ssr: false });
+// This is the crucial part that prevents the error.
+// It ensures the map only renders on the client-side.
+const MapComponent = dynamic(() => import("../components/Map"), { 
+  ssr: false 
+});
 
 export default function MapPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -52,8 +56,8 @@ export default function MapPage() {
   };
 
   const ReportList = ({ onReportClick }: { onReportClick: (report: Report) => void }) => (
-    <div className="mt-2">
-      <h3 className="text-xl text-center font-bold font-sofia mb-4">Докладвани проблеми ({filteredReports.length})</h3>
+    <div className="mt-8">
+      <h3 className="text-xl font-bold font-sofia mb-4">Докладвани проблеми ({filteredReports.length})</h3>
        {filteredReports.length === 0 ? (
         <p className="text-muted-foreground text-center py-4">Няма намерени сигнали.</p>
       ) : (
@@ -80,13 +84,47 @@ export default function MapPage() {
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block w-1-3 lg:w-1-4 bg-background border-l border-border p-6 overflow-y-auto">
-        {/* Desktop content here */}
+      <div className="hidden md:block w-1/3 lg:w-1/4 bg-background border-l border-border p-6 overflow-y-auto">
         <h2 className="text-2xl font-bold font-sofia mb-4">Филтри</h2>
+        <div className="grid grid-cols-1 gap-4">
+            <button
+                onClick={() => setFilter("all")}
+                className={`flex items-center justify-center p-3 rounded-full font-semibold transition-all duration-300 shadow-sm ${
+                filter === "all"
+                    ? "bg-gray-300 dark:bg-gray-700 text-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/10"
+                }`}
+            >
+                <FaMapMarkerAlt className="mr-2" />
+                Всички
+            </button>
+            <button
+                onClick={() => setFilter("obstacle")}
+                className={`flex items-center justify-center p-3 rounded-full font-semibold transition-all duration-300 shadow-sm ${
+                filter === "obstacle"
+                    ? "bg-red-500 text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/10"
+                }`}
+            >
+                <FaExclamationTriangle className="mr-2" />
+                Препятствия
+            </button>
+            <button
+                onClick={() => setFilter("safe")}
+                className={`flex items-center justify-center p-3 rounded-full font-semibold transition-all duration-300 shadow-sm ${
+                filter === "safe"
+                    ? "bg-green-500 text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/10"
+                }`}
+            >
+                <FaWheelchair className="mr-2" />
+                Достъпни маршрути
+            </button>
+        </div>
         <ReportList onReportClick={(report) => setSelectedReport(report)} />
       </div>
       
-      {/* FAB with "glass" effect matching the navbar */}
+      {/* Mobile UI elements */}
       <div className="md:hidden fixed bottom-6 right-6 z-20">
         <button
           onClick={() => setIsMobileSheetOpen(true)}
@@ -95,16 +133,12 @@ export default function MapPage() {
           <FaListUl size={24} />
         </button>
       </div>
-
-      {/* Backdrop for the mobile sheet */}
       <div
         className={`md:hidden fixed inset-0 z-30 transition-opacity duration-300 ${
           isMobileSheetOpen ? "bg-black/20 backdrop-blur-sm" : "bg-transparent pointer-events-none"
         }`}
         onClick={() => setIsMobileSheetOpen(false)}
       />
-      
-      {/* Floating Card Bottom Sheet with "glass" effect */}
       <div
         className={`md:hidden fixed bottom-4 left-4 right-4 z-40 backdrop-blur-lg bg-white/80 dark:bg-black/80 border border-white/30 dark:border-black/30 rounded-2xl shadow-2xl p-4 transition-all duration-500 ease-in-out ${
           isMobileSheetOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"

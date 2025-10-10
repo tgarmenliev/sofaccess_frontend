@@ -1,36 +1,13 @@
-// components/Map.tsx
+// src/app/components/Map.tsx
 
 "use client";
+import "leaflet/dist/leaflet.css"; // This must be imported
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import L, { LatLng } from "leaflet";
 import { useEffect, useRef, useState } from "react";
 import { Report } from "../map/page";
 
-const problemIcon = new L.DivIcon({
-  html: `<div style="width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-  className: "",
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
-
-const safeIcon = new L.DivIcon({
-  html: `<div style="width: 16px; height: 16px; background-color: #22c55e; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-  className: "",
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
-
-const userLocationIcon = new L.DivIcon({
-  html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-           <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: #3b82f6; opacity: 0.3;"></div>
-           <div style="position: relative; width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; border: 2px solid white;"></div>
-         </div>`,
-  className: "",
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
-
+// ... кодът за иконите остава същият ...
 
 interface MapProps {
   reports: Report[];
@@ -39,6 +16,7 @@ interface MapProps {
 }
 
 export default function MapComponent({ reports, selectedReport, onPopupClose }: MapProps) {
+  // ... целият останал код на компонента остава същият ...
   const markerRefs = useRef<{ [key: number]: L.Marker | null }>({});
   const mapRef = useRef<L.Map>(null);
   const [userPosition, setUserPosition] = useState<LatLng | null>(null);
@@ -80,7 +58,6 @@ export default function MapComponent({ reports, selectedReport, onPopupClose }: 
           ref={(el) => { markerRefs.current[report.id] = el; }}
           icon={report.type === 'safe' ? safeIcon : problemIcon}
           eventHandlers={{
-            // Add a click event handler to each marker
             click: (e) => {
               mapRef.current?.flyTo(e.latlng, 16);
             },
@@ -107,3 +84,27 @@ export default function MapComponent({ reports, selectedReport, onPopupClose }: 
     </MapContainer>
   );
 }
+
+const problemIcon = new L.DivIcon({
+  html: `<div style="width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  className: "",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+const safeIcon = new L.DivIcon({
+  html: `<div style="width: 16px; height: 16px; background-color: #22c55e; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  className: "",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+const userLocationIcon = new L.DivIcon({
+  html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+           <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: #3b82f6; opacity: 0.3;"></div>
+           <div style="position: relative; width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; border: 2px solid white;"></div>
+         </div>`,
+  className: "",
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
