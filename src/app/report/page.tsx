@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle } from "react-icons/fa";
 
 // Bounding box for Sofia coordinates
 const SOFIA_BOUNDING_BOX = {
@@ -25,10 +25,13 @@ export default function ReportPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "warning" } | null>(null);
+  const [locationMessage, setLocationMessage] = useState<{ text: string; type: "error" | "warning" } | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const formatAddress = (item: any) => {
+  const isFormReady = !loading && coords && file;
+
+  const formatAddress = (item: any): string => {
     if (item.address) {
       const { road, house_number, suburb, city } = item.address;
       let parts = [];
@@ -47,7 +50,8 @@ export default function ReportPage() {
 
   const searchAddress = (query: string) => {
     setAddress(query);
-    setMessage(null);
+    setLocationMessage(null);
+    setSubmitMessage(null);
     if (query.length < 3) {
       setSuggestions([]);
       return;
@@ -82,14 +86,15 @@ export default function ReportPage() {
 
   const useCurrentLocation = () => {
     setLoading(true);
-    setMessage(null);
+    setLocationMessage(null);
+    setSubmitMessage(null);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
 
           if (!isWithinSofia(latitude, longitude)) {
-            setMessage({
+            setLocationMessage({
               text: "Вашето местоположение е извън София. Моля, докладвайте само проблеми в града.",
               type: "warning",
             });
@@ -108,7 +113,7 @@ export default function ReportPage() {
             setAddress(fullAddress);
             setCoords({ lat: latitude, lng: longitude });
           } catch {
-            setMessage({
+            setLocationMessage({
               text: "Не успяхме да намерим точен адрес.",
               type: "error",
             });
@@ -117,25 +122,27 @@ export default function ReportPage() {
           }
         },
         () => {
-          setMessage({ text: "Няма достъп до местоположението.", type: "error" });
+          setLocationMessage({ text: "Няма достъп до местоположението.", type: "error" });
           setLoading(false);
         }
       );
     } else {
-      setMessage({ text: "Геолокацията не се поддържа.", type: "error" });
+      setLocationMessage({ text: "Геолокацията не се поддържа.", type: "error" });
       setLoading(false);
     }
   };
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!coords) {
-      setMessage({ text: "Моля, въведете валиден адрес или използвайте текущото си местоположение.", type: "error" });
+    setSubmitMessage(null);
+
+    if (!isFormReady) {
+      console.error("Submit attempted with incomplete form.");
       return;
     }
-    setLoading(true);
-    setMessage(null);
 
+    setLoading(true);
+    
     try {
       const form = e.currentTarget as HTMLFormElement;
       const fd = new FormData();
@@ -144,40 +151,30 @@ export default function ReportPage() {
       fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
       fd.append("lat", String(coords.lat));
       fd.append("lng", String(coords.lng));
-      if (file) fd.append("file", file);
+      fd.append("file", file as Blob);
 
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        body: fd, // no headers!
-      });
-
+      const res = await fetch("/api/reports", { method: "POST", body: fd });
       const data = await res.json();
-      console.log("Server response:", data);
 
       if (res.ok) {
-        setMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
+        setSubmitMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
         form.reset();
         setFile(null);
         setAddress("");
         setCoords(null);
       } else {
-        setMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
+        setSubmitMessage({ text: data?.error || "Неуспех при изпращане.", type: "error" });
       }
     } catch (err) {
-      console.error("Submit error:", err);
-      setMessage({ text: "Възникна грешка при изпращането. Провери конзолата.", type: "error" });
+      setSubmitMessage({ text: "Възникна грешка при изпращането.", type: "error" });
     } finally {
       setLoading(false);
     }
   }
 
-  const getMessageColor = () => {
-    if (!message) return "";
-    return message.type === "success"
-      ? "text-green-500"
-      : message.type === "error"
-      ? "text-red-500"
-      : "text-yellow-500";
+  const getLocationMessageColor = () => {
+    if (!locationMessage) return "";
+    return locationMessage.type === "error" ? "text-red-500" : "text-yellow-500";
   };
 
   return (
@@ -195,7 +192,7 @@ export default function ReportPage() {
               <FaMapPin className="h-6 w-6 mr-2" />
               <h2 className="text-xl font-semibold">Местоположение</h2>
             </div>
-            {message && <div className={`mt-2 p-3 rounded-md text-sm font-medium ${getMessageColor()}`}>{message.text}</div>}
+            {locationMessage && <div className={`mt-2 p-3 rounded-md text-sm font-medium ${getLocationMessageColor()}`}>{locationMessage.text}</div>}
             <div className="flex flex-col sm:flex-row gap-4 relative">
               <button
                 type="button"
@@ -224,7 +221,7 @@ export default function ReportPage() {
                           setAddress(formatAddress(s));
                           setCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) });
                           setSuggestions([]);
-                          setMessage(null);
+                          setLocationMessage(null);
                         }}
                       >
                         {formatAddress(s)}
@@ -247,12 +244,9 @@ export default function ReportPage() {
               name="barrier-type"
               className="block w-full px-4 py-3 text-sm border border-border rounded-full bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
             >
-              <option>Счупен тротоар</option>
+              <option>Разбит тротоар</option>
               <option>Стълби без рампа</option>
               <option>Счупен асансьор/ескалатор</option>
-              <option>Паркирано превозно средство</option>
-              <option>Оправен асансьор/ескалатор</option>
-              <option>Достъпен тротоар</option>
               <option>Друго</option>
             </select>
           </div>
@@ -264,7 +258,7 @@ export default function ReportPage() {
             rows={4}
             required
             className="block w-full px-4 py-3 border border-border rounded-2xl bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            placeholder="Подробно описание на проблема..."
+            placeholder="Подробно описание на проблема и местоположението му..."
           ></textarea>
 
           {/* Image upload */}
@@ -288,13 +282,35 @@ export default function ReportPage() {
             </div>
           </div>
 
+          {/* The message area for SUCCESS or API ERRORS after submission */}
+          {submitMessage && (
+            <div
+              className={`flex items-center justify-center p-3 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out animate-fade-in-up ${
+                submitMessage.type === 'success'
+                  ? 'bg-green-500/10 text-green-500'
+                  : 'bg-red-500/10 text-red-500'
+              }`}
+            >
+              {submitMessage.type === 'success' ? (
+                <FaCheckCircle className="mr-2" />
+              ) : (
+                <FaExclamationTriangle className="mr-2" />
+              )}
+              {submitMessage.text}
+            </div>
+          )}
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading || !coords}
-            className="group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-105 transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={!isFormReady}
+            className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform
+              ${isFormReady 
+                ? 'hover:scale-105 animate-pulse' 
+                : 'disabled:bg-gray-400 disabled:cursor-not-allowed'
+              }`}
           >
-            <FaPaperPlane className="mr-2" />
+            <FaPaperPlane className={`mr-2 ${isFormReady ? 'animate-bounce' : ''}`} />
             {loading ? "Изпращане..." : "Изпрати сигнал"}
           </button>
         </form>
