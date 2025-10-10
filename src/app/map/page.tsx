@@ -2,7 +2,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { FaMapMarkerAlt, FaWheelchair, FaExclamationTriangle, FaListUl } from "react-icons/fa";
+import { FaMapMarkerAlt, FaExclamationTriangle, FaListUl, FaCheckCircle } from "react-icons/fa";
 import dynamic from "next/dynamic";
 
 export interface Report {
@@ -15,8 +15,8 @@ export interface Report {
   image_url?: string;
 }
 
-// This is the crucial part that prevents the error.
-// It ensures the map only renders on the client-side.
+// This line is the key to fixing the errors.
+// It tells Next.js to load the map component ONLY on the client-side.
 const MapComponent = dynamic(() => import("../components/Map"), { 
   ssr: false 
 });
@@ -39,10 +39,12 @@ export default function MapPage() {
     fetchReports();
   }, []);
 
+  const isResolvedType = (type: string) => type === 'safe' || type === 'Разрешен';
+
   const filteredReports = reports.filter((r) => {
     if (filter === "all") return true;
-    if (filter === "obstacle") return r.type !== "safe";
-    if (filter === "safe") return r.type === "safe";
+    if (filter === "resolved") return isResolvedType(r.type);
+    if (filter === "obstacle") return !isResolvedType(r.type);
     return true;
   });
 
@@ -65,7 +67,7 @@ export default function MapPage() {
         {filteredReports.map((r) => (
           <li key={r.id} onClick={() => onReportClick(r)}
             className={`p-4 rounded-xl shadow-sm transition-all duration-200 hover:scale-[1.02] cursor-pointer border ${
-              r.type === "safe" ? "bg-green-500/10 border-green-500" : "bg-red-500/10 border-red-500"
+              isResolvedType(r.type) ? "bg-green-500/10 border-green-500" : "bg-red-500/10 border-red-500"
             } ${selectedReport?.id === r.id ? 'ring-2 ring-primary' : ''}`}
           >
             <p className="font-bold text-foreground">{r.title}</p>
@@ -110,15 +112,15 @@ export default function MapPage() {
                 Препятствия
             </button>
             <button
-                onClick={() => setFilter("safe")}
+                onClick={() => setFilter("resolved")}
                 className={`flex items-center justify-center p-3 rounded-full font-semibold transition-all duration-300 shadow-sm ${
-                filter === "safe"
+                filter === "resolved"
                     ? "bg-green-500 text-white"
                     : "bg-muted text-muted-foreground hover:bg-muted-foreground/10"
                 }`}
             >
-                <FaWheelchair className="mr-2" />
-                Достъпни маршрути
+                <FaCheckCircle className="mr-2" />
+                Разрешени сигнали
             </button>
         </div>
         <ReportList onReportClick={(report) => setSelectedReport(report)} />

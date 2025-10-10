@@ -56,7 +56,7 @@ export default function MapComponent({ reports, selectedReport, onPopupClose }: 
       {reports.map((report) => (
         <Marker key={report.id} position={[report.lat, report.lng]}
           ref={(el) => { markerRefs.current[report.id] = el; }}
-          icon={report.type === 'safe' ? safeIcon : problemIcon}
+          icon={report.type === 'safe' || report.type === 'Разрешен' ? safeIcon : problemIcon}
           eventHandlers={{
             click: (e) => {
               mapRef.current?.flyTo(e.latlng, 16);
