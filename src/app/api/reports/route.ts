@@ -73,3 +73,50 @@ export async function GET() {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const { ids } = await req.json();
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ success: false, error: "Invalid IDs provided" }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("reports")
+      .update({ 
+        type: "Разрешен",
+        updated_at: new Date().toISOString()
+      })
+      .in("id", ids);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("PUT error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: "ID is required" }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("reports")
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("DELETE error:", err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
