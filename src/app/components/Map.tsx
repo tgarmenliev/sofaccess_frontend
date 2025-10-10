@@ -1,39 +1,37 @@
 // components/Map.tsx
 
 "use client";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import { useEffect, useRef } from "react";
+import L, { LatLng } from "leaflet";
+import { useEffect, useRef, useState } from "react";
 import { Report } from "../map/page";
 
-// 🔄 ПРОМЯНА: Премахваме стандартната икона, ще създадем наша.
-// const DefaultIcon = L.icon({ ... });
-// L.Marker.prototype.options.icon = DefaultIcon;
-
-// ✨ НОВО: Създаваме къстъм икона за проблемите (червена точка)
 const problemIcon = new L.DivIcon({
-  html: `<span class="flex h-4 w-4">
-           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-           <span class="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
-         </span>`,
-  className: "", // Tailwind класовете са в HTML-a
+  html: `<div style="width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  className: "",
   iconSize: [16, 16],
-  iconAnchor: [8, 8], // Центрираме иконата
+  iconAnchor: [8, 8],
 });
 
-// ✨ НОВО: Икона за "достъпни" места (зелена точка) - за бъдеща употреба
 const safeIcon = new L.DivIcon({
-    html: `<span class="relative flex h-4 w-4">
-            <span class="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white"></span>
-           </span>`,
-    className: "",
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+  html: `<div style="width: 16px; height: 16px; background-color: #22c55e; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  className: "",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+const userLocationIcon = new L.DivIcon({
+  html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+           <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: #3b82f6; opacity: 0.3;"></div>
+           <div style="position: relative; width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; border: 2px solid white;"></div>
+         </div>`,
+  className: "",
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 });
 
 
-// ✨ НОВО: Пропс за компонента
 interface MapProps {
   reports: Report[];
   selectedReport: Report | null;
@@ -41,21 +39,32 @@ interface MapProps {
 }
 
 export default function MapComponent({ reports, selectedReport, onPopupClose }: MapProps) {
-  // ✨ НОВО: Създаваме референции към маркерите, за да можем да ги управляваме (напр. да отворим popup)
   const markerRefs = useRef<{ [key: number]: L.Marker | null }>({});
   const mapRef = useRef<L.Map>(null);
+  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
+  const hasCenteredOnUser = useRef(false);
 
-  // ✨ НОВО: useEffect, който се задейства, когато се избере репорт от списъка
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const newPos = new LatLng(pos.coords.latitude, pos.coords.longitude);
+        setUserPosition(newPos);
+        
+        if (mapRef.current && !hasCenteredOnUser.current) {
+          mapRef.current.flyTo(newPos, 15);
+          hasCenteredOnUser.current = true;
+        }
+      },
+      (err) => console.error("Geolocation error:", err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
+
   useEffect(() => {
     if (selectedReport && mapRef.current) {
       const marker = markerRefs.current[selectedReport.id];
       if (marker) {
-        // Плавно преместване на картата до маркера
-        mapRef.current.flyTo(marker.getLatLng(), 16, { // 16 е добро ниво на зуум
-          animate: true,
-          duration: 1,
-        });
-        // Отваряме неговия popup
+        mapRef.current.flyTo(marker.getLatLng(), 16, { animate: true, duration: 1 });
         marker.openPopup();
       }
     }
@@ -63,29 +72,19 @@ export default function MapComponent({ reports, selectedReport, onPopupClose }: 
 
 
   return (
-    // 🔄 ПРОМЯНА: Добавяме ref към MapContainer
-    <MapContainer
-      center={[42.6977, 23.3219]} // София център
-      zoom={13}
-      className="h-full w-full" // Заема цялото налично пространство
-      ref={mapRef}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
+    <MapContainer center={[42.6977, 23.3219]} zoom={13} className="h-full w-full" ref={mapRef}>
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       
-      {/* ✨ НОВО: Итерираме през всички сигнали и създаваме маркер за всеки */}
       {reports.map((report) => (
-        <Marker
-          key={report.id}
-          position={[report.lat, report.lng]}
-          // ✨ НОВО: ref, за да можем да достъпим маркера по-късно
+        <Marker key={report.id} position={[report.lat, report.lng]}
           ref={(el) => { markerRefs.current[report.id] = el; }}
-          // ✨ НОВО: Избираме икона според типа на сигнала
           icon={report.type === 'safe' ? safeIcon : problemIcon}
           eventHandlers={{
-            popupclose: onPopupClose, // Когато popup се затвори ръчно, нулираме state-a
+            // Add a click event handler to each marker
+            click: (e) => {
+              mapRef.current?.flyTo(e.latlng, 16);
+            },
+            popupclose: onPopupClose,
           }}
         >
           <Popup>
@@ -99,6 +98,12 @@ export default function MapComponent({ reports, selectedReport, onPopupClose }: 
           </Popup>
         </Marker>
       ))}
+
+      {userPosition && (
+        <Marker position={userPosition} icon={userLocationIcon}>
+          <Popup>Ти си тук 📍</Popup>
+        </Marker>
+      )}
     </MapContainer>
   );
 }

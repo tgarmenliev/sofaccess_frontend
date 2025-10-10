@@ -22,11 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${sofiaSans.variable} font-sans`}>
+    <html lang="bg">
+      <body className={`${inter.variable} ${sofiaSans.variable} font-sans bg-background text-foreground`}>
         <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <main className="pt-16">{children}</main>
       </body>
     </html>
   );
