@@ -17,10 +17,10 @@ const Footer = () => {
 
           {/* Right */}
           <div className="flex space-x-4 text-sm">
-            <a href="#" className="text-muted-foreground hover:text-primary">
+            <a href="/privacy" className="text-muted-foreground hover:text-primary">
               Политика за поверителност
             </a>
-            <a href="#" className="text-muted-foreground hover:text-primary">
+            <a href="/terms" className="text-muted-foreground hover:text-primary">
               Условия за ползване
             </a>
           </div>
