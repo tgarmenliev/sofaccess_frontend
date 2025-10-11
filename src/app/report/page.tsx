@@ -1,8 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
-import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle } from "react-icons/fa";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
 
-// Bounding box for Sofia coordinates
 const SOFIA_BOUNDING_BOX = {
   minLat: 42.63,
   maxLat: 42.75,
@@ -34,7 +33,7 @@ export default function ReportPage() {
   const formatAddress = (item: any): string => {
     if (item.address) {
       const { road, house_number, suburb, city } = item.address;
-      let parts = [];
+      const parts = [];
       if (road) parts.push(road);
       if (house_number) parts.push(house_number);
       if (suburb && suburb !== city) parts.push(suburb);
@@ -51,7 +50,6 @@ export default function ReportPage() {
   const searchAddress = (query: string) => {
     setAddress(query);
     setLocationMessage(null);
-    setSubmitMessage(null);
     if (query.length < 3) {
       setSuggestions([]);
       return;
@@ -73,10 +71,7 @@ export default function ReportPage() {
           }
         );
         const data = await res.json();
-        const uniqueSuggestions = Array.from(new Set(data.map((item: any) => JSON.stringify(item)))).map((item: any) =>
-          JSON.parse(item)
-        );
-        setSuggestions(uniqueSuggestions);
+        setSuggestions(data);
       } catch (err) {
         console.error("Fetch error:", err);
         setSuggestions([]);
@@ -87,7 +82,6 @@ export default function ReportPage() {
   const useCurrentLocation = () => {
     setLoading(true);
     setLocationMessage(null);
-    setSubmitMessage(null);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -134,26 +128,26 @@ export default function ReportPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitMessage(null);
-
-    if (!isFormReady) {
-      console.error("Submit attempted with incomplete form.");
-      return;
-    }
+    if (!isFormReady) return;
 
     setLoading(true);
-    
+    setSubmitMessage(null);
+
     try {
-      const form = e.currentTarget as HTMLFormElement;
+      const form = e.currentTarget;
       const fd = new FormData();
       fd.append("address", address);
-      fd.append("description", (form.elements.namedItem("description") as HTMLInputElement).value);
+      fd.append("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
       fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
-      fd.append("lat", String(coords.lat));
-      fd.append("lng", String(coords.lng));
-      fd.append("file", file as Blob);
+      fd.append("lat", String(coords?.lat));
+      fd.append("lng", String(coords?.lng));
+      if (file) fd.append("file", file);
 
-      const res = await fetch("/api/reports", { method: "POST", body: fd });
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        body: fd,
+      });
+
       const data = await res.json();
 
       if (res.ok) {
@@ -163,10 +157,12 @@ export default function ReportPage() {
         setAddress("");
         setCoords(null);
       } else {
-        setSubmitMessage({ text: data?.error || "Неуспех при изпращане.", type: "error" });
+        setSubmitMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
       }
     } catch (err) {
-      setSubmitMessage({ text: "Възникна грешка при изпращането.", type: "error" });
+      console.error("Submit error:", err);
+      const error = err as Error;
+      setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -186,7 +182,6 @@ export default function ReportPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-12 space-y-8">
-          {/* Location */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaMapPin className="h-6 w-6 mr-2" />
@@ -213,9 +208,9 @@ export default function ReportPage() {
                 />
                 {suggestions.length > 0 && (
                   <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                    {suggestions.map((s, i) => (
+                    {suggestions.map((s) => (
                       <li
-                        key={i}
+                        key={s.place_id}
                         className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                         onClick={() => {
                           setAddress(formatAddress(s));
@@ -233,7 +228,6 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Type */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaExclamationTriangle className="h-6 w-6 mr-2" />
@@ -251,7 +245,6 @@ export default function ReportPage() {
             </select>
           </div>
 
-          {/* Description */}
           <textarea
             id="description"
             name="description"
@@ -261,7 +254,6 @@ export default function ReportPage() {
             placeholder="Подробно описание на проблема и местоположението му..."
           ></textarea>
 
-          {/* Image upload */}
           <div>
             <div className="flex items-center text-primary mb-2">
               <FaCamera className="h-6 w-6 mr-2" />
@@ -281,8 +273,7 @@ export default function ReportPage() {
               </label>
             </div>
           </div>
-
-          {/* The message area for SUCCESS or API ERRORS after submission */}
+          
           {submitMessage && (
             <div
               className={`flex items-center justify-center p-3 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out animate-fade-in-up ${
@@ -291,24 +282,15 @@ export default function ReportPage() {
                   : 'bg-red-500/10 text-red-500'
               }`}
             >
-              {submitMessage.type === 'success' ? (
-                <FaCheckCircle className="mr-2" />
-              ) : (
-                <FaExclamationTriangle className="mr-2" />
-              )}
+              {submitMessage.type === 'success' ? <FaCheckCircle className="mr-2" /> : <FaExclamationTriangle className="mr-2" />}
               {submitMessage.text}
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={!isFormReady}
-            className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform
-              ${isFormReady 
-                ? 'hover:scale-105 animate-pulse' 
-                : 'disabled:bg-gray-400 disabled:cursor-not-allowed'
-              }`}
+            className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed ${isFormReady ? 'hover:scale-105 animate-pulse' : ''}`}
           >
             <FaPaperPlane className={`mr-2 ${isFormReady ? 'animate-bounce' : ''}`} />
             {loading ? "Изпращане..." : "Изпрати сигнал"}

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // service key, не anon
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } }
 );
 
@@ -28,9 +28,7 @@ export async function POST(req: Request) {
       const { error: uploadError } = await supabaseAdmin
         .storage
         .from("report-images")
-        .upload(filename, buffer, {
-          contentType: file.type,
-        });
+        .upload(filename, buffer, { contentType: file.type });
 
       if (uploadError) throw uploadError;
 
@@ -44,16 +42,17 @@ export async function POST(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .insert([{ title, description, type, lat, lng, image_url }]);
+      .insert([{ title, description, type, lat, lng, image_url, sent: false, is_archived: false }]); // Added default values
 
     if (error) throw error;
-
+    
     await supabaseAdmin.rpc('increment_total_reports');
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error inserting:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const error = err as Error;
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
@@ -63,14 +62,13 @@ export async function GET() {
       .from("reports")
       .select("*")
       .order("created_at", { ascending: false });
-
     if (error) throw error;
-
     return NextResponse.json({ success: true, data });
-  } catch (err: any) {
+  } catch (err) {
     console.error("GET error:", err);
+    const error = err as Error;
     return NextResponse.json(
-      { success: false, error: err.message || "Unknown error" },
+      { success: false, error: error.message || "Unknown error" },
       { status: 500 }
     );
   }
@@ -86,20 +84,18 @@ export async function PUT(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .update({ 
-        type: "Разрешен",
-        updated_at: new Date().toISOString()
-      })
+      .update({ type: "Разрешен", updated_at: new Date().toISOString() })
       .in("id", ids);
 
     if (error) throw error;
 
     await supabaseAdmin.rpc('increment_resolved_reports', { count: ids.length });
-    
+
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("PUT error:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const error = err as Error;
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
@@ -120,9 +116,10 @@ export async function DELETE(req: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("DELETE error:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const error = err as Error;
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
@@ -136,16 +133,15 @@ export async function PATCH(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .update({ 
-        sent: sent
-      })
+      .update({ sent: sent, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error("PATCH error:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const error = err as Error;
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

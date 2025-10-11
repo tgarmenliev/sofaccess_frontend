@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FaWheelchair, FaBabyCarriage, FaBlind, FaMapMarkedAlt, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
+import Image from "next/image";
 import StatsCounter from "./components/StatsCounter";
 
 export default function LandingPage() {
@@ -7,10 +8,12 @@ export default function LandingPage() {
     <div className="relative bg-background text-foreground">
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <img
+        <Image
           src="https://velstana.com/wp-content/uploads/Example_Bulgaria_Culture-trip_Sofia-Aleksander-Nevsky.jpeg"
           alt="City of Sofia"
-          className="absolute inset-0 w-full h-full object-cover brightness-75"
+          fill
+          className="object-cover brightness-75"
+          priority
         />
         <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-primary/30 backdrop-blur-sm" />
 
@@ -65,9 +68,7 @@ export default function LandingPage() {
             Какво е SOFaccess?
           </h2>
           <p className="text-muted-foreground max-w-3xl mx-auto text-lg mb-12">
-            SOFaccess е платформа, която предоставя възможност за докладване на
-            проблеми с достъпността в градската пешеходна инфраструктура и среда на София.
-            Тя е създадена, за да направи града по-достъпен за всеки.
+            SOFaccess е платформа, създадена да направи София по-достъпна за всеки.
             Чрез общността, технологиите и споделените данни можем да създадем
             по-сигурен и удобен град.
           </p>
@@ -92,7 +93,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      
       <StatsCounter />
 
       {/* Visually Stunning Call to Action Section */}
@@ -105,7 +106,7 @@ export default function LandingPage() {
               Вашият сигнал прави София по-достъпна
             </h2>
             <p className="text-xl md:text-2xl text-primary dark:text-white/80 font-medium mb-6 max-w-2xl animate-fade-in">
-              Присъединете се към общността и направете своя принос. Докладвайте проблеми с градската достъпност и помогнете за създаването на по-добра среда за всички.
+              Присъединете се към общността и направете своя принос. Заедно можем да изградим по-добър град за всички.
             </p>
             <Link
               href="/report"

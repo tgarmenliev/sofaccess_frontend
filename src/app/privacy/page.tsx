@@ -1,5 +1,3 @@
-// app/privacy/page.tsx
-
 export default function PrivacyPolicyPage() {
   return (
     <div className="bg-background">
@@ -61,7 +59,7 @@ export default function PrivacyPolicyPage() {
           
           <h2 className="text-3xl font-bold font-sofia mt-10 mb-4">4. Колко време пазим Вашите данни?</h2>
           <p className="text-lg leading-relaxed mb-6">
-            Сигналите за проблеми остават в нашата система, докато не бъдат разрешени. След като един сигнал бъде маркиран като "Разрешен" от администратор, той се <strong className="font-semibold">изтрива автоматично и перманентно</strong> от нашата база данни след 7 дни.
+            Сигналите за проблеми остават в нашата система, докато не бъдат разрешени. След като един сигнал бъде маркиран като &apos;Разрешен&apos; от администратор, той се <strong className="font-semibold">изтрива автоматично и перманентно</strong> от нашата база данни след 7 дни.
           </p>
 
           <h2 className="text-3xl font-bold font-sofia mt-10 mb-4">5. Вашите права</h2>

@@ -1,5 +1,3 @@
-// app/api/stats/route.ts
-
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -13,7 +11,7 @@ export async function GET() {
       .from("counters")
       .select('total, resolved')
       .eq('id', 1)
-      .single(); // Select the single row
+      .single();
 
     if (error) throw error;
 
@@ -25,10 +23,11 @@ export async function GET() {
       },
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("Stats API error:", err);
+    const error = err as Error;
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
