@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane } from "react-icons/fa";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle } from "react-icons/fa";
 
 const SOFIA_BOUNDING_BOX = {
   minLat: 42.63,
@@ -18,10 +18,24 @@ const isWithinSofia = (lat: number, lng: number): boolean => {
   );
 };
 
+// Added a specific type for the API response to remove 'any'
+interface NominatimSuggestion {
+  place_id: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  address: {
+    road?: string;
+    house_number?: string;
+    suburb?: string;
+    city?: string;
+  }
+}
+
 export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [locationMessage, setLocationMessage] = useState<{ text: string; type: "error" | "warning" } | null>(null);
@@ -30,7 +44,7 @@ export default function ReportPage() {
 
   const isFormReady = !loading && coords && file;
 
-  const formatAddress = (item: any): string => {
+  const formatAddress = (item: NominatimSuggestion): string => {
     if (item.address) {
       const { road, house_number, suburb, city } = item.address;
       const parts = [];
@@ -63,14 +77,9 @@ export default function ReportPage() {
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             query
           )}&addressdetails=1&limit=10&bounded=1&viewbox=23.20,42.63,23.45,42.75`,
-          {
-            headers: {
-              "User-Agent": "sof-access/1.0",
-              "Accept-Language": "bg",
-            },
-          }
+          { headers: { "User-Agent": "sof-access/1.0", "Accept-Language": "bg" } }
         );
-        const data = await res.json();
+        const data: NominatimSuggestion[] = await res.json();
         setSuggestions(data);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -88,10 +97,7 @@ export default function ReportPage() {
           const { latitude, longitude } = pos.coords;
 
           if (!isWithinSofia(latitude, longitude)) {
-            setLocationMessage({
-              text: "Вашето местоположение е извън София. Моля, докладвайте само проблеми в града.",
-              type: "warning",
-            });
+            setLocationMessage({ text: "Вашето местоположение е извън София. Моля, докладвайте само проблеми в града.", type: "warning" });
             setAddress("");
             setCoords(null);
             setLoading(false);
@@ -102,15 +108,12 @@ export default function ReportPage() {
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=bg`
             );
-            const data = await res.json();
+            const data: NominatimSuggestion = await res.json();
             const fullAddress = formatAddress(data);
             setAddress(fullAddress);
             setCoords({ lat: latitude, lng: longitude });
           } catch {
-            setLocationMessage({
-              text: "Не успяхме да намерим точен адрес.",
-              type: "error",
-            });
+            setLocationMessage({ text: "Не успяхме да намерим точен адрес.", type: "error" });
           } finally {
             setLoading(false);
           }
@@ -143,11 +146,7 @@ export default function ReportPage() {
       fd.append("lng", String(coords?.lng));
       if (file) fd.append("file", file);
 
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        body: fd,
-      });
-
+      const res = await fetch("/api/reports", { method: "POST", body: fd });
       const data = await res.json();
 
       if (res.ok) {
@@ -160,8 +159,8 @@ export default function ReportPage() {
         setSubmitMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
       }
     } catch (err) {
-      console.error("Submit error:", err);
       const error = err as Error;
+      console.error("Submit error:", error);
       setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
     } finally {
       setLoading(false);
