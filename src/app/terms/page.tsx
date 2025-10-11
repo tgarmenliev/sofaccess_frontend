@@ -54,7 +54,7 @@ export default function TermsOfUsePage() {
 
           <h2 className="text-3xl font-bold font-sofia mt-10 mb-4">7. Свържете се с нас</h2>
           <p className="text-lg leading-relaxed">
-            Ако имате въпроси относно тези Условия, можете да се свържете с нас на имейл: sofaccess.project@gmail.com.
+            Ако имате въпроси относно тези Условия, можете да се свържете с нас на имейл: [твоя имейл адрес].
           </p>
         </div>
       </div>

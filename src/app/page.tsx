@@ -1,123 +1,300 @@
-import Link from "next/link";
-import { FaWheelchair, FaBabyCarriage, FaBlind, FaMapMarkedAlt, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
-import Image from "next/image";
-import StatsCounter from "./components/StatsCounter";
+"use client";
+import { useState, useRef } from "react";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle } from "react-icons/fa";
 
-export default function LandingPage() {
+const SOFIA_BOUNDING_BOX = {
+  minLat: 42.63,
+  maxLat: 42.75,
+  minLng: 23.20,
+  maxLng: 23.45,
+};
+
+const isWithinSofia = (lat: number, lng: number): boolean => {
   return (
-    <div className="relative bg-background text-foreground">
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <Image
-          src="https://velstana.com/wp-content/uploads/Example_Bulgaria_Culture-trip_Sofia-Aleksander-Nevsky.jpeg"
-          alt="City of Sofia"
-          fill
-          className="object-cover brightness-75"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-primary/30 backdrop-blur-sm" />
+    lat >= SOFIA_BOUNDING_BOX.minLat &&
+    lat <= SOFIA_BOUNDING_BOX.maxLat &&
+    lng >= SOFIA_BOUNDING_BOX.minLng &&
+    lng <= SOFIA_BOUNDING_BOX.maxLng
+  );
+};
 
-        <div className="relative z-10 text-center max-w-3xl px-4 md:px-6">
-          <h1 className="font-sofia font-extrabold text-5xl md:text-6xl lg:text-7xl text-white drop-shadow-lg break-words text-balance">
-            София - достъпна за всички
-          </h1>
-          <p className="mt-6 text-lg md:text-2xl text-white/90 leading-relaxed break-words text-balance">
-            Намерете достъпни маршрути, докладвайте препятствия и помогнете за изграждането на по-достъпен град.
-          </p>
+interface NominatimSuggestion {
+  place_id: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  address: {
+    road?: string;
+    house_number?: string;
+    suburb?: string;
+    city?: string;
+  }
+}
 
-          {/* CTA Buttons */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center w-full">
-            <Link
-              href="/map"
-              className="px-6 py-4 bg-primary text-white rounded-xl text-lg font-semibold shadow-lg hover:scale-105 transition-transform backdrop-blur-md max-w-xs w-full mx-auto"
-            >
-              <FaMapMarkedAlt className="inline-block mr-2" />
-              Виж картата
-            </Link>
-            <Link
-              href="/report"
-              className="px-6 py-4 bg-white/20 text-white rounded-xl text-lg font-semibold shadow-lg hover:bg-white/30 hover:scale-105 transition-transform backdrop-blur-md max-w-xs w-full mx-auto"
-            >
-              <FaExclamationTriangle className="inline-block mr-2" />
-              Докладвай проблем
-            </Link>
-          </div>
+export default function ReportPage() {
+  const [loading, setLoading] = useState(false);
+  const [address, setAddress] = useState("");
+  const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [locationMessage, setLocationMessage] = useState<{ text: string; type: "error" | "warning" } | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-          {/* User Groups */}
-          <div className="mt-10 flex flex-col md:flex-row justify-center gap-4 md:gap-8 text-white/90 w-full">
-            <div className="flex items-center gap-2 justify-center">
-              <FaWheelchair className="h-6 w-6 text-primary" />
-              <span>Хора с увреждания</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <FaBabyCarriage className="h-6 w-6 text-primary" />
-              <span>Родители с колички</span>
-            </div>
-            <div className="flex items-center gap-2 justify-center">
-              <FaBlind className="h-6 w-6 text-primary" />
-              <span>Възрастни граждани</span>
-            </div>
-          </div>
+  const isFormReady = !loading && coords && file;
+
+  const formatAddress = (item: NominatimSuggestion): string => {
+    if (item.address) {
+      const { road, house_number, suburb, city } = item.address;
+      const parts = [];
+      if (road) parts.push(road);
+      if (house_number) parts.push(house_number);
+      if (suburb && suburb !== city) parts.push(suburb);
+      if (city && city === "Sofia") parts.push("София");
+      return parts.join(", ");
+    }
+    const parts = item.display_name.split(",").slice(0, 3);
+    if (parts.length > 0 && parts[parts.length - 1].trim() === "София") {
+      return parts.join(", ");
+    }
+    return parts.join(", ");
+  };
+
+  const searchAddress = (query: string) => {
+    setAddress(query);
+    setLocationMessage(null);
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            query
+          )}&addressdetails=1&limit=10&bounded=1&viewbox=23.20,42.63,23.45,42.75`,
+          { headers: { "User-Agent": "sof-access/1.0", "Accept-Language": "bg" } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setSuggestions([]);
+      }
+    }, 300);
+  };
+
+  const useCurrentLocation = () => {
+    setLoading(true);
+    setLocationMessage(null);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+
+          if (!isWithinSofia(latitude, longitude)) {
+            setLocationMessage({ text: "Вашето местоположение е извън София. Моля, докладвайте само проблеми в града.", type: "warning" });
+            setAddress("");
+            setCoords(null);
+            setLoading(false);
+            return;
+          }
+
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=bg`
+            );
+            const data = await res.json();
+            const fullAddress = formatAddress(data);
+            setAddress(fullAddress);
+            setCoords({ lat: latitude, lng: longitude });
+          } catch {
+            setLocationMessage({ text: "Не успяхме да намерим точен адрес.", type: "error" });
+          } finally {
+            setLoading(false);
+          }
+        },
+        () => {
+          setLocationMessage({ text: "Няма достъп до местоположението.", type: "error" });
+          setLoading(false);
+        }
+      );
+    } else {
+      setLocationMessage({ text: "Геолокацията не се поддържа.", type: "error" });
+      setLoading(false);
+    }
+  };
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!isFormReady) return;
+
+    setLoading(true);
+    setSubmitMessage(null);
+
+    try {
+      const form = e.currentTarget;
+      const fd = new FormData();
+      fd.append("address", address);
+      fd.append("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
+      fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
+      fd.append("lat", String(coords?.lat));
+      fd.append("lng", String(coords?.lng));
+      if (file) fd.append("file", file);
+
+      const res = await fetch("/api/reports", { method: "POST", body: fd });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubmitMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
+        form.reset();
+        setFile(null);
+        setAddress("");
+        setCoords(null);
+      } else {
+        setSubmitMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.error("Submit error:", error);
+      setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const getLocationMessageColor = () => {
+    if (!locationMessage) return "";
+    return locationMessage.type === "error" ? "text-red-500" : "text-yellow-500";
+  };
+
+  return (
+    <div className="bg-background text-foreground min-h-screen py-20 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-xl mx-auto backdrop-blur-md bg-white/20 dark:bg-black/20 rounded-3xl shadow-2xl overflow-hidden p-8">
+        <div className="text-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold font-sofia">Докладвай препятствие</h1>
+          <p className="mt-4 text-lg text-muted-foreground">Помогнете ни да направим София по-достъпна.</p>
         </div>
-      </section>
 
-      {/* About Section */}
-      <section className="py-20 bg-background">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6 font-sofia">
-            Какво е SOFaccess?
-          </h2>
-          <p className="text-muted-foreground max-w-3xl mx-auto text-lg mb-12">
-            SOFaccess е платформа, създадена да направи София по-достъпна за всеки.
-            Чрез общността, технологиите и споделените данни можем да създадем
-            по-сигурен и удобен град.
-          </p>
-
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaMapMarkedAlt className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Открий маршрути</h3>
-              <p className="text-muted-foreground">Намерете безопасни и достъпни маршрути в цяла София.</p>
+        <form onSubmit={handleSubmit} className="mt-12 space-y-8">
+          <div>
+            <div className="flex items-center text-primary mb-2">
+              <FaMapPin className="h-6 w-6 mr-2" />
+              <h2 className="text-xl font-semibold">Местоположение</h2>
             </div>
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaExclamationTriangle className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Докладвай проблем</h3>
-              <p className="text-muted-foreground">Съобщете за препятствия и помогнете на общността.</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaUsers className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Общност</h3>
-              <p className="text-muted-foreground">Присъединете се към граждани, които изграждат по-добра София.</p>
+            {locationMessage && <div className={`mt-2 p-3 rounded-md text-sm font-medium ${getLocationMessageColor()}`}>{locationMessage.text}</div>}
+            <div className="flex flex-col sm:flex-row gap-4 relative">
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={loading}
+                className="flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm shadow-md hover:scale-105 transition-transform w-full sm:w-auto"
+              >
+                <FaLocationArrow className="h-4 w-4 mr-2" />
+                {loading ? "Зареждане..." : "Използвай текущо местоположение"}
+              </button>
+              <div className="relative w-full">
+                <input
+                  value={address}
+                  onChange={(e) => searchAddress(e.target.value)}
+                  className="block w-full px-4 py-3 border border-border rounded-full bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  placeholder="Или въведете адрес..."
+                  required
+                />
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-border rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                    {suggestions.map((s) => (
+                      <li
+                        key={s.place_id}
+                        className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => {
+                          setAddress(formatAddress(s));
+                          setCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) });
+                          setSuggestions([]);
+                          setLocationMessage(null);
+                        }}
+                      >
+                        {formatAddress(s)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
-      
-      <StatsCounter />
 
-      {/* Visually Stunning Call to Action Section */}
-      <section className="relative py-28 overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center min-h-[420px]">
-
-        {/* Floating Glassmorphic Content */}
-        <div className="relative z-10 max-w-3xl w-full mx-auto px-6">
-          <div className="backdrop-blur-2xl bg-white/20 dark:bg-gray-900/30 rounded-3xl shadow-2xl border border-white/30 dark:border-gray-700/60 px-8 py-14 flex flex-col items-center gap-6 animate-fade-in-up">
-            <h2 className="text-4xl md:text-5xl font-extrabold font-sofia text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500 drop-shadow-xl mb-2 animate-text-glow py-2">
-              Вашият сигнал прави София по-достъпна
-            </h2>
-            <p className="text-xl md:text-2xl text-primary dark:text-white/80 font-medium mb-6 max-w-2xl animate-fade-in">
-              Присъединете се към общността и направете своя принос. Заедно можем да изградим по-добър град за всички.
-            </p>
-            <Link
-              href="/report"
-              className="inline-flex items-center gap-2 px-12 py-5 bg-gradient-to-r from-blue-400 via-blue-500 to-emerald-500 text-white rounded-full text-2xl font-bold shadow-xl hover:scale-105 transition-transform hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-primary/40"
+          <div>
+            <div className="flex items-center text-primary mb-2">
+              <FaExclamationTriangle className="h-6 w-6 mr-2" />
+              <h2 className="text-xl font-semibold">Тип на проблема</h2>
+            </div>
+            <select
+              id="barrier-type"
+              name="barrier-type"
+              className="block w-full px-4 py-3 text-sm border border-border rounded-full bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
             >
-              <FaShieldAlt className="inline-block text-3xl" />
-              Докладвай сега
-            </Link>
+              <option>Разбит тротоар</option>
+              <option>Стълби без рампа</option>
+              <option>Счупен асансьор/ескалатор</option>
+              <option>Друго</option>
+            </select>
           </div>
-        </div>
-      </section>
+
+          <textarea
+            id="description"
+            name="description"
+            rows={4}
+            required
+            className="block w-full px-4 py-3 border border-border rounded-2xl bg-background/50 placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            placeholder="Подробно описание на проблема и местоположението му..."
+          ></textarea>
+
+          <div>
+            <div className="flex items-center text-primary mb-2">
+              <FaCamera className="h-6 w-6 mr-2" />
+              <h2 className="text-xl font-semibold">Прикачи снимка</h2>
+            </div>
+            <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-border border-dashed rounded-xl">
+              <input
+                id="file-upload"
+                name="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="sr-only"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer text-primary hover:text-blue-700">
+                {file ? file.name : "Качи файл"}
+              </label>
+            </div>
+          </div>
+          
+          {submitMessage && (
+            <div
+              className={`flex items-center justify-center p-3 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out animate-fade-in-up ${
+                submitMessage.type === 'success'
+                  ? 'bg-green-500/10 text-green-500'
+                  : 'bg-red-500/10 text-red-500'
+              }`}
+            >
+              {submitMessage.type === 'success' ? <FaCheckCircle className="mr-2" /> : <FaExclamationTriangle className="mr-2" />}
+              {submitMessage.text}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={!isFormReady}
+            className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed ${isFormReady ? 'hover:scale-105 animate-pulse' : ''}`}
+          >
+            <FaPaperPlane className={`mr-2 ${isFormReady ? 'animate-bounce' : ''}`} />
+            {loading ? "Изпращане..." : "Изпрати сигнал"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

@@ -45,7 +45,8 @@ export default function AdminPage() {
         setReports(data.data);
       }
     } catch (err) {
-      console.error("Fetch failed:", err);
+      const error = err as Error;
+      console.error("Fetch failed:", error.message);
       setMessage({ text: "Грешка при зареждане на сигналите.", type: "error"});
     } finally {
       setLoading(false);
@@ -85,7 +86,8 @@ export default function AdminPage() {
         setMessage({ text: data.error || "Грешка при запазване.", type: "error" });
       }
     } catch (err) {
-      setMessage({ text: "Възникна грешка при комуникацията със сървъра.", type: "error" });
+      const error = err as Error;
+      setMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -106,7 +108,8 @@ export default function AdminPage() {
         setMessage({ text: data.error || "Грешка при изтриване.", type: 'error'});
       }
     } catch (err) {
-      setMessage({ text: "Възникна грешка при комуникацията.", type: 'error'});
+      const error = err as Error;
+      setMessage({ text: `Възникна грешка: ${error.message}`, type: 'error'});
     }
   };
 
@@ -125,7 +128,8 @@ export default function AdminPage() {
         setMessage({ text: "Грешка при обновяване на статуса.", type: "error" });
       }
     } catch (err) {
-        setMessage({ text: "Възникна грешка.", type: "error" });
+        const error = err as Error;
+        setMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
     } finally {
       setUpdatingSentId(null);
     }
