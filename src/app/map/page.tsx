@@ -1,9 +1,9 @@
-// app/map/page.tsx
-
 "use client";
-import { useState, useEffect } from "react";
-import { FaMapMarkerAlt, FaExclamationTriangle, FaListUl, FaCheckCircle } from "react-icons/fa";
+import { useState, useEffect, useRef } from "react";
+import { FaMapMarkerAlt, FaExclamationTriangle, FaListUl, FaCheckCircle, FaLocationArrow } from "react-icons/fa";
 import dynamic from "next/dynamic";
+import toast, { Toaster } from 'react-hot-toast';
+import type { MapComponentHandle } from "../components/Map";
 
 export interface Report {
   id: number;
@@ -15,8 +15,6 @@ export interface Report {
   image_url?: string;
 }
 
-// This line is the key to fixing the errors.
-// It tells Next.js to load the map component ONLY on the client-side.
 const MapComponent = dynamic(() => import("../components/Map"), { 
   ssr: false 
 });
@@ -26,6 +24,7 @@ export default function MapPage() {
   const [filter, setFilter] = useState("all");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
+  const mapRef = useRef<MapComponentHandle>(null);
 
   useEffect(() => {
     async function fetchReports() {
@@ -78,11 +77,49 @@ export default function MapPage() {
       )}
     </div>
   );
+  
+  const handleCenterOnUser = () => {
+    mapRef.current?.centerOnUser();
+  };
+
+  const handleGeolocationError = (message: string) => {
+    toast.custom((t) => (
+      <div
+        className={`${
+          t.visible ? 'animate-slide-in-down' : 'animate-leave'
+        } relative max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black dark:ring-gray-700 ring-opacity-5 overflow-hidden`}
+      >
+        {/* Corrected flexbox layout for the toast content */}
+        <div className="p-4 flex items-start">
+          <div className="flex-shrink-0">
+            <FaExclamationTriangle className="h-6 w-6 text-yellow-500" />
+          </div>
+          <div className="ml-3 flex-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Грешка при локализиране
+            </p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {message}
+            </p>
+          </div>
+        </div>
+        <div className="h-1 bg-yellow-400 absolute bottom-0 left-0" style={{ animation: `shrink 5s linear forwards` }}></div>
+      </div>
+    ), { duration: 5000 });
+  };
 
   return (
     <div className="relative flex flex-col md:flex-row h-[calc(100vh-4rem)]">
+      <Toaster position="top-center" containerClassName="pt-4" />
+
       <div className="flex-1 h-full w-full z-0">
-        <MapComponent reports={filteredReports} selectedReport={selectedReport} onPopupClose={handlePopupClose} />
+        <MapComponent 
+          ref={mapRef} 
+          reports={filteredReports} 
+          selectedReport={selectedReport} 
+          onPopupClose={handlePopupClose}
+          onGeolocationError={handleGeolocationError}
+        />
       </div>
 
       {/* Desktop Sidebar */}
@@ -127,6 +164,15 @@ export default function MapPage() {
       </div>
       
       {/* Mobile UI elements */}
+      <div className="md:hidden fixed bottom-24 right-6 z-20">
+        <button
+          onClick={handleCenterOnUser}
+          className="backdrop-blur-lg bg-white/50 dark:bg-black/50 border border-white/30 dark:border-black/30 text-foreground p-4 rounded-full shadow-lg hover:scale-110 transition-transform"
+        >
+          <FaLocationArrow size={20} />
+        </button>
+      </div>
+
       <div className="md:hidden fixed bottom-6 right-6 z-20">
         <button
           onClick={() => setIsMobileSheetOpen(true)}
@@ -135,6 +181,7 @@ export default function MapPage() {
           <FaListUl size={24} />
         </button>
       </div>
+
       <div
         className={`md:hidden fixed inset-0 z-30 transition-opacity duration-300 ${
           isMobileSheetOpen ? "bg-black/20 backdrop-blur-sm" : "bg-transparent pointer-events-none"
