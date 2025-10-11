@@ -18,6 +18,7 @@ const isWithinSofia = (lat: number, lng: number): boolean => {
   );
 };
 
+// Added a specific type for the API response to remove 'any'
 interface NominatimSuggestion {
   place_id: number;
   lat: string;
@@ -78,7 +79,7 @@ export default function ReportPage() {
           )}&addressdetails=1&limit=10&bounded=1&viewbox=23.20,42.63,23.45,42.75`,
           { headers: { "User-Agent": "sof-access/1.0", "Accept-Language": "bg" } }
         );
-        const data = await res.json();
+        const data: NominatimSuggestion[] = await res.json();
         setSuggestions(data);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -107,7 +108,7 @@ export default function ReportPage() {
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=bg`
             );
-            const data = await res.json();
+            const data: NominatimSuggestion = await res.json();
             const fullAddress = formatAddress(data);
             setAddress(fullAddress);
             setCoords({ lat: latitude, lng: longitude });
