@@ -45,3 +45,23 @@ body {
     text-wrap: balance;
   }
 }
+
+@keyframes shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@keyframes slide-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-down {
+  animation: slide-in-down 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
