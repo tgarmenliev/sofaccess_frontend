@@ -1,11 +1,27 @@
 // app/login/page.tsx
 "use client";
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Auth } from '@supabase/auth-ui-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 
 export default function LoginPage() {
   const supabase = createClientComponentClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        router.replace('/admin');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
