@@ -13,6 +13,7 @@ interface Report {
   type: string;
   image_url?: string;
   sent: boolean;
+  is_visible: boolean;
 }
 
 const formatDate = (dateString: string) => {
@@ -28,7 +29,7 @@ export default function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [updatingSentId, setUpdatingSentId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [changedIds, setChangedIds] = useState<Set<number>>(new Set());
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [expandedReportId, setExpandedReportId] = useState<number | null>(null);
@@ -39,7 +40,7 @@ export default function AdminPage() {
   async function fetchReports() {
     try {
       setLoading(true);
-      const res = await fetch("/api/reports");
+      const res = await fetch("/api/reports?admin=true");
       const data = await res.json();
       if (data.success) {
         setReports(data.data);
@@ -112,26 +113,26 @@ export default function AdminPage() {
       setMessage({ text: `Възникна грешка: ${error.message}`, type: 'error'});
     }
   };
-
-  const handleSentChange = async (reportId: number, currentStatus: boolean) => {
-    setUpdatingSentId(reportId);
+  
+  const handleUpdateStatus = async (reportId: number, field: 'sent' | 'is_visible', value: boolean) => {
+    setUpdatingId(reportId);
     try {
       const res = await fetch('/api/reports', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: reportId, sent: !currentStatus })
+        body: JSON.stringify({ id: reportId, [field]: value })
       });
 
       if (res.ok) {
-        setReports(reports.map(r => r.id === reportId ? { ...r, sent: !currentStatus } : r));
+        setReports(reports.map(r => r.id === reportId ? { ...r, [field]: value } : r));
       } else {
-        setMessage({ text: "Грешка при обновяване на статуса.", type: "error" });
+        setMessage({ text: "Грешка при обновяване.", type: "error" });
       }
     } catch (err) {
-        const error = err as Error;
-        setMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
+      const error = err as Error;
+      setMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
     } finally {
-      setUpdatingSentId(null);
+      setUpdatingId(null);
     }
   };
 
@@ -172,8 +173,8 @@ export default function AdminPage() {
               <th scope="col" className="px-4 py-3 w-32 text-center">Действия</th>
               <th scope="col" className="px-4 py-3 w-40">Дата и час</th>
               <th scope="col" className="px-4 py-3">Адрес</th>
-              <th scope="col" className="px-4 py-3 w-40">Тип</th>
               <th scope="col" className="px-4 py-3 w-28">Снимка</th>
+              <th scope="col" className="px-4 py-3 w-28 text-center">Видим</th>
               <th scope="col" className="px-4 py-3 w-28 text-center">Изпратен</th>
               <th scope="col" className="px-4 py-3 w-28 text-center">Разрешен</th>
             </tr>
@@ -195,13 +196,6 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-xs">{formatDate(report.created_at)}</td>
                   <td className="px-4 py-3 whitespace-normal break-words">{report.title}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      report.type === 'Разрешен' ? 'bg-green-500/20 text-green-700' : 'bg-red-500/20 text-red-700'
-                    }`}>
-                      {report.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
                     {report.image_url ? (
                       <Link href={report.image_url} target="_blank" className="text-primary hover:underline">
                         Виж
@@ -209,14 +203,26 @@ export default function AdminPage() {
                     ) : 'Няма'}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {updatingSentId === report.id ? (
-                      <div className="w-5 h-5 border-2 border-dashed border-primary rounded-full animate-spin mx-auto"></div>
+                    {updatingId === report.id ? (
+                      <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin mx-auto"></div>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5 rounded text-primary focus:ring-primary"
+                        checked={report.is_visible}
+                        onChange={() => handleUpdateStatus(report.id, 'is_visible', !report.is_visible)}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {updatingId === report.id ? (
+                        <div className="w-5 h-5 border-2 border-dashed rounded-full animate-spin mx-auto"></div>
                     ) : (
                       <input
                         type="checkbox"
                         className="w-5 h-5 rounded text-primary focus:ring-primary"
                         checked={report.sent}
-                        onChange={() => handleSentChange(report.id, report.sent)}
+                        onChange={() => handleUpdateStatus(report.id, 'sent', !report.sent)}
                       />
                     )}
                   </td>
@@ -224,17 +230,27 @@ export default function AdminPage() {
                     <input
                       type="checkbox"
                       className="w-5 h-5 rounded text-primary focus:ring-primary disabled:opacity-50"
-                      checked={report.type === 'Разрешен' || changedIds.has(report.id)}
-                      disabled={report.type === 'Разрешен'}
+                      checked={report.type === 'Разрешен сигнал' || changedIds.has(report.id)}
+                      disabled={report.type === 'Разрешен сигнал'}
                       onChange={() => handleCheckboxChange(report.id)}
                     />
                   </td>
                 </tr>
                 {expandedReportId === report.id && (
                   <tr className="bg-muted/30">
-                    <td colSpan={7} className="p-4">
-                      <h4 className="font-semibold mb-2">Пълно описание:</h4>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{report.description}</p>
+                    <td colSpan={7} className="p-4 space-y-4">
+                      <div>
+                        <h4 className="font-semibold mb-1">Тип на сигнала:</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          report.type === 'Разрешен сигнал' ? 'bg-green-500/20 text-green-200' : 'bg-red-500/20 text-red-200'
+                        }`}>
+                          {report.type}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-1">Пълно описание:</h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{report.description}</p>
+                      </div>
                     </td>
                   </tr>
                 )}
