@@ -10,14 +10,12 @@ const supabaseAdmin = createClient(
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-
     const title = formData.get("address")?.toString();
     const description = formData.get("description")?.toString();
     const type = formData.get("type")?.toString();
     const lat = parseFloat(formData.get("lat") as string);
     const lng = parseFloat(formData.get("lng") as string);
     const file = formData.get("file") as File | null;
-
     let image_url: string | null = null;
 
     if (file && file.size > 0) {
@@ -42,35 +40,41 @@ export async function POST(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .insert([{ title, description, type, lat, lng, image_url, sent: false }]);
+      .insert([{ title, description, type, lat, lng, image_url, sent: false, is_visible: false }]);
 
     if (error) throw error;
     
     await supabaseAdmin.rpc('increment_total_reports');
-
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Error inserting:", err);
     const error = err as Error;
+    console.error("POST error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const { data, error } = await supabaseAdmin
+    const { searchParams } = new URL(req.url);
+    const isAdmin = searchParams.get('admin') === 'true';
+
+    let query = supabaseAdmin
       .from("reports")
       .select("*")
       .order("created_at", { ascending: false });
+
+    if (!isAdmin) {
+      query = query.eq('is_visible', true);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error("GET error:", err);
     const error = err as Error;
-    return NextResponse.json(
-      { success: false, error: error.message || "Unknown error" },
-      { status: 500 }
-    );
+    console.error("GET error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
@@ -84,17 +88,16 @@ export async function PUT(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .update({ type: "Разрешен", updated_at: new Date().toISOString() })
+      .update({ type: "Разрешен сигнал", updated_at: new Date().toISOString() })
       .in("id", ids);
 
     if (error) throw error;
 
     await supabaseAdmin.rpc('increment_resolved_reports', { count: ids.length });
-
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("PUT error:", err);
     const error = err as Error;
+    console.error("PUT error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
@@ -117,31 +120,42 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("DELETE error:", err);
     const error = err as Error;
+    console.error("DELETE error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function PATCH(req: Request) {
   try {
-    const { id, sent } = await req.json();
+    const { id, sent, is_visible } = await req.json();
 
-    if (id === undefined || sent === undefined) {
-      return NextResponse.json({ success: false, error: "ID and sent status are required" }, { status: 400 });
+    if (id === undefined) {
+      return NextResponse.json({ success: false, error: "ID is required" }, { status: 400 });
+    }
+    
+    const updateData: { updated_at: string, sent?: boolean, is_visible?: boolean } = {
+        updated_at: new Date().toISOString()
+    };
+
+    if (sent !== undefined) {
+        updateData.sent = sent;
+    }
+
+    if (is_visible !== undefined) {
+        updateData.is_visible = is_visible;
     }
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .update({ sent: sent, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', id);
 
     if (error) throw error;
-
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("PATCH error:", err);
     const error = err as Error;
+    console.error("PATCH error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
