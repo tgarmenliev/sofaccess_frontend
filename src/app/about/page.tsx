@@ -1,5 +1,5 @@
 import { FaMapMarkedAlt, FaHandsHelping, FaEnvelope } from "react-icons/fa";
-import Image from "next/image"; // Import the Image component from Next.js
+import Image from "next/image";
 
 export default function AboutPage() {
   return (

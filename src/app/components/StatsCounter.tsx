@@ -17,7 +17,6 @@ function AnimatedNumber({ toValue }: { toValue: number }) {
     const controls = animate(0, toValue, {
       duration: 2,
       onUpdate(value) {
-        // Use toLocaleString for nice formatting of large numbers
         node.textContent = Math.round(value).toLocaleString("bg-BG");
       },
     });

@@ -96,10 +96,10 @@ export default function LandingPage() {
       
       <StatsCounter />
 
-      {/* Visually Stunning Call to Action Section */}
+      {/* Call to Action */}
       <section className="relative py-28 overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center min-h-[420px]">
 
-        {/* Floating Glassmorphic Content */}
+        {/* Report now section */}
         <div className="relative z-10 max-w-3xl w-full mx-auto px-6">
           <div className="backdrop-blur-2xl bg-white/20 dark:bg-gray-900/30 rounded-3xl shadow-2xl border border-white/30 dark:border-gray-700/60 px-8 py-14 flex flex-col items-center gap-6 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-extrabold font-sofia text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500 drop-shadow-xl mb-2 animate-text-glow py-2">

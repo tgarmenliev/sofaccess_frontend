@@ -89,7 +89,6 @@ export default function MapPage() {
           t.visible ? 'animate-slide-in-down' : 'animate-leave'
         } relative max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black dark:ring-gray-700 ring-opacity-5 overflow-hidden`}
       >
-        {/* Corrected flexbox layout for the toast content */}
         <div className="p-4 flex items-start">
           <div className="flex-shrink-0">
             <FaExclamationTriangle className="h-6 w-6 text-yellow-500" />

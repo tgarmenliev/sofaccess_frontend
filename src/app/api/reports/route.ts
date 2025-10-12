@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     const { error } = await supabaseAdmin
       .from("reports")
-      .insert([{ title, description, type, lat, lng, image_url, sent: false, is_archived: false }]); // Added default values
+      .insert([{ title, description, type, lat, lng, image_url, sent: false }]);
 
     if (error) throw error;
     

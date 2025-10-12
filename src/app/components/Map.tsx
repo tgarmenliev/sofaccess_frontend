@@ -41,7 +41,6 @@ const MapComponent = forwardRef<MapComponentHandle, MapProps>(
           },
           (err) => {
             if (err.code === err.PERMISSION_DENIED) {
-              // Updated error message text
               onGeolocationError("Достъпът до местоположението е отказан. Моля, разрешете го от настройките на браузъра.");
             } else {
               onGeolocationError("Неуспешно зареждане на местоположението.");
