@@ -51,6 +51,9 @@ const Navbar = () => {
             <Link href="/report" className={`${textColor} hover:text-primary transition`}>
               Докладвай
             </Link>
+            <Link href="/faq" className={`${textColor} hover:text-primary transition`}>
+              ЧЗВ
+            </Link>
             <Link href="/about" className={`${textColor} hover:text-primary transition`}>
               За нас
             </Link>
@@ -75,6 +78,9 @@ const Navbar = () => {
             </Link>
             <Link onClick={() => setIsOpen(false)} href="/report" className={`block ${mobileTextColor} hover:text-primary dark:hover:text-primary transition`}>
               Докладвай
+            </Link>
+            <Link onClick={() => setIsOpen(false)} href="/faq" className={`block ${mobileTextColor} hover:text-primary dark:hover:text-primary transition`}>
+              ЧЗВ
             </Link>
             <Link onClick={() => setIsOpen(false)} href="/about" className={`block ${mobileTextColor} hover:text-primary dark:hover:text-primary transition`}>
               За нас
