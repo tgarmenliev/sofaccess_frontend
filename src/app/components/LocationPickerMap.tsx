@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L, { LatLng } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { FaCheck, FaTimes } from "react-icons/fa";
+import toast, { Toaster } from 'react-hot-toast';
+import { FaCheck, FaTimes, FaLocationArrow, FaExclamationTriangle } from "react-icons/fa";
 
 const defaultIcon = L.icon({
     iconUrl: "/marker-icon.png",
@@ -13,27 +14,99 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
+// Bounding box for Sofia coordinates, same as in the report page
+const SOFIA_BOUNDING_BOX = {
+  minLat: 42.63,
+  maxLat: 42.75,
+  minLng: 23.20,
+  maxLng: 23.45,
+};
+
+const isWithinSofia = (lat: number, lng: number): boolean => {
+  return (
+    lat >= SOFIA_BOUNDING_BOX.minLat &&
+    lat <= SOFIA_BOUNDING_BOX.maxLat &&
+    lng >= SOFIA_BOUNDING_BOX.minLng &&
+    lng <= SOFIA_BOUNDING_BOX.maxLng
+  );
+};
+
 interface LocationPickerMapProps {
   onClose: () => void;
   onLocationSelect: (coords: { lat: number, lng: number }, address: string) => void;
 }
 
-// Component to handle map events
-function MapEvents({ setMarkerPosition }: { 
-    setMarkerPosition: (position: LatLng) => void 
-}) {
+// Component to handle map clicks
+function MapEvents({ onMapClick }: { onMapClick: (position: LatLng) => void }) {
   useMapEvents({
     click(e) {
-      setMarkerPosition(e.latlng); // Move the marker to the clicked position
+      onMapClick(e.latlng);
     },
   });
   return null;
+}
+
+// Component for location button
+function CenterOnUserButton({ onGeolocationError }: { onGeolocationError: (message: string) => void }) {
+  const map = useMap();
+  const handleCenter = () => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (!isWithinSofia(latitude, longitude)) {
+          onGeolocationError("Вашето местоположение е извън София.");
+          return;
+        }
+        map.flyTo([latitude, longitude], 16);
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          onGeolocationError("Достъпът до местоположението е отказан.");
+        } else {
+          onGeolocationError("Неуспешно зареждане на местоположението.");
+        }
+      }
+    );
+  };
+
+  return (
+    <div className="absolute bottom-5 right-5 z-[1000]">
+       <button
+          onClick={handleCenter}
+          className="backdrop-blur-lg bg-white/50 dark:bg-black/50 border border-white/30 dark:border-black/30 text-foreground p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
+          title="Намери ме"
+        >
+          <FaLocationArrow size={20} />
+        </button>
+    </div>
+  );
 }
 
 export default function LocationPickerMap({ onClose, onLocationSelect }: LocationPickerMapProps) {
   const [markerPosition, setMarkerPosition] = useState<LatLng | null>(null);
   const [address, setAddress] = useState("Кликнете върху картата, за да изберете място...");
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+
+  const handleToastError = (message: string) => {
+    toast.custom((t) => (
+      <div
+        className={`${
+          t.visible ? 'animate-slide-in-down' : 'animate-leave'
+        } relative max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black dark:ring-gray-700 ring-opacity-5 overflow-hidden`}
+      >
+        <div className="p-4 flex items-start">
+          <div className="flex-shrink-0">
+            <FaExclamationTriangle className="h-6 w-6 text-yellow-500" />
+          </div>
+          <div className="ml-3 flex-1">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Предупреждение</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{message}</p>
+          </div>
+        </div>
+        <div className="h-1 bg-yellow-400 absolute bottom-0 left-0" style={{ animation: `shrink 4s linear forwards` }}></div>
+      </div>
+    ), { duration: 4000 });
+  };
 
   const getAddressFromCoords = async (coords: LatLng) => {
     setIsLoadingAddress(true);
@@ -61,35 +134,43 @@ export default function LocationPickerMap({ onClose, onLocationSelect }: Locatio
     }
   };
 
-  const handleSetPosition = (position: LatLng) => {
-    setMarkerPosition(position);
-    getAddressFromCoords(position);
+  const handleMapClick = (position: LatLng) => {
+    if (isWithinSofia(position.lat, position.lng)) {
+      setMarkerPosition(position);
+      getAddressFromCoords(position);
+    } else {
+      handleToastError("Избраното място е извън София. Моля, изберете точка в рамките на града.");
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex flex-col animate-fade-in-up">
-      <div className="bg-background/80 backdrop-blur-lg p-4 text-center text-foreground shadow-md">
+      <Toaster position="top-center" containerClassName="pt-4" />
+      
+      <div className="bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-lg p-4 text-center text-foreground shadow-md border-b border-gray-200/50 dark:border-gray-700/50">
         <h3 className="font-semibold">Избор на местоположение</h3>
         <p className="text-sm text-muted-foreground h-5">{address}</p>
       </div>
 
-      <MapContainer center={[42.6977, 23.3219]} zoom={13} className="flex-grow">
+      <MapContainer center={[42.6977, 23.3219]} zoom={13} className="flex-grow" zoomControl={false}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <MapEvents setMarkerPosition={handleSetPosition} />
+        <MapEvents onMapClick={handleMapClick} />
         {markerPosition && <Marker position={markerPosition} />}
+
+        <CenterOnUserButton onGeolocationError={handleToastError} />
       </MapContainer>
 
-      <div className="p-4 bg-background/80 backdrop-blur-lg flex justify-center gap-4 shadow-up">
+      <div className="p-4 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-lg flex justify-center gap-4 shadow-up border-t border-gray-200/50 dark:border-gray-700/50">
         <button onClick={onClose} className="flex items-center gap-2 px-6 py-3 bg-red-600/80 text-white rounded-full font-semibold shadow-lg hover:bg-red-700 transition">
           <FaTimes /> Отказ
         </button>
         <button 
           onClick={handleConfirm}
           disabled={!markerPosition || isLoadingAddress}
-          className="flex items-center gap-2 px-6 py-3 bg-primary/80 text-white rounded-full font-semibold shadow-lg hover:bg-primary transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-full font-semibold shadow-lg hover:bg-primary transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <FaCheck /> Готово
         </button>

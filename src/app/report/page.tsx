@@ -1,7 +1,8 @@
 "use client";
 import { useState, useRef, Fragment } from "react";
-import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle, FaMap } from "react-icons/fa";
+import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle, FaMap, FaQuestionCircle } from "react-icons/fa";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
 const LocationPickerMap = dynamic(() => import("../components/LocationPickerMap"), {
   ssr: false,
@@ -46,8 +47,8 @@ export default function ReportPage() {
   const [locationMessage, setLocationMessage] = useState<{ text: string; type: "error" | "warning" } | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [reportType, setReportType] = useState("Разбит тротоар");
 
   const isFormReady = !loading && coords && file;
 
@@ -157,11 +158,12 @@ export default function ReportPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setSubmitMessage({ text: "Сигналът е изпратен успешно!", type: "success" });
+        setSubmitMessage({ text: "Сигналът ви е изпратен за одобрение от администратор!", type: "success" });
         form.reset();
         setFile(null);
         setAddress("");
         setCoords(null);
+        setReportType("Разбит тротоар");
       } else {
         setSubmitMessage({ text: data?.error || "Неуспех при изпращане", type: "error" });
       }
@@ -261,13 +263,27 @@ export default function ReportPage() {
               <select
                 id="barrier-type"
                 name="barrier-type"
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
                 className="block w-full px-4 py-3 text-sm border border-border rounded-full bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
               >
                 <option>Разбит тротоар</option>
+                <option>Препятствие на тротоара</option>
                 <option>Стълби без рампа</option>
                 <option>Счупен асансьор/ескалатор</option>
+                <option>Липсващ/повреден капак на шахта</option>
+                <option>Разрешен сигнал</option>
                 <option>Друго</option>
               </select>
+
+              {reportType === "Разрешен сигнал" && (
+                <div className="mt-3 text-sm text-center">
+                  <Link href="/faq#why-resolved" target="_blank" className="text-primary hover:underline inline-flex items-center gap-2">
+                    <FaQuestionCircle />
+                    Защо мога да докладвам разрешен сигнал?
+                  </Link>
+                </div>
+              )}
             </div>
 
             <textarea
