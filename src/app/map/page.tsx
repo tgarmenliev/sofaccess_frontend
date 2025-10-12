@@ -37,8 +37,22 @@ export default function MapPage() {
     }
     fetchReports();
   }, []);
+  
+  // This effect locks the body scroll when the mobile sheet is open
+  useEffect(() => {
+    if (isMobileSheetOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Cleanup function to ensure scroll is restored if the component unmounts
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [isMobileSheetOpen]);
 
-  const isResolvedType = (type: string) => type === 'safe' || type === 'Разрешен';
+  const isResolvedType = (type: string) => type === 'safe' || type === 'Разрешен сигнал';
 
   const filteredReports = reports.filter((r) => {
     if (filter === "all") return true;
@@ -57,8 +71,9 @@ export default function MapPage() {
   };
 
   const ReportList = ({ onReportClick }: { onReportClick: (report: Report) => void }) => (
-    <div className="mt-8">
-      <h3 className="text-xl font-bold font-sofia mb-4">Докладвани проблеми ({filteredReports.length})</h3>
+    // Removed margin-top to be controlled by the parent
+    <div>
+      <h3 className="text-xl font-bold font-sofia mb-4 text-center">Докладвани проблеми ({filteredReports.length})</h3>
        {filteredReports.length === 0 ? (
         <p className="text-muted-foreground text-center py-4">Няма намерени сигнали.</p>
       ) : (
@@ -159,7 +174,10 @@ export default function MapPage() {
                 Разрешени сигнали
             </button>
         </div>
-        <ReportList onReportClick={(report) => setSelectedReport(report)} />
+        {/* The component is now called inside the sidebar without a margin-top */}
+        <div className="mt-8">
+            <ReportList onReportClick={(report) => setSelectedReport(report)} />
+        </div>
       </div>
       
       {/* Mobile UI elements */}
@@ -187,14 +205,18 @@ export default function MapPage() {
         }`}
         onClick={() => setIsMobileSheetOpen(false)}
       />
+
+      {/* Corrected Mobile Bottom Sheet */}
       <div
-        className={`md:hidden fixed bottom-4 left-4 right-4 z-40 backdrop-blur-lg bg-white/80 dark:bg-black/80 border border-white/30 dark:border-black/30 rounded-2xl shadow-2xl p-4 transition-all duration-500 ease-in-out ${
+        className={`md:hidden fixed bottom-4 left-4 right-4 z-40 backdrop-blur-lg bg-white/80 dark:bg-black/80 border border-white/30 dark:border-black/30 rounded-2xl shadow-2xl transition-all duration-500 ease-in-out flex flex-col ${
           isMobileSheetOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"
         }`}
-        style={{ maxHeight: 'calc(100vh - 4rem - 3rem)' }}
+        style={{ maxHeight: 'calc(100vh - 8rem)' }} // Increased top margin
       >
-        <div className="overflow-y-auto h-full">
-          <div className="w-16 h-1.5 bg-muted rounded-full mx-auto mb-2" />
+        <div className="flex-shrink-0 p-4 border-b border-border">
+          <div className="w-16 h-1.5 bg-muted rounded-full mx-auto" />
+        </div>
+        <div className="overflow-y-auto p-4"> {/* The scrollable area with padding */}
           <ReportList onReportClick={handleMobileReportSelect} />
         </div>
       </div>
