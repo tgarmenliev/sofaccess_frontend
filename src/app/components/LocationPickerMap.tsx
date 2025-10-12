@@ -121,7 +121,8 @@ export default function LocationPickerMap({ onClose, onLocationSelect }: Locatio
       } else {
         setAddress("Не е намерен адрес за тази локация.");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Error fetching address:", err);
       setAddress("Грешка при търсене на адрес.");
     } finally {
       setIsLoadingAddress(false);
