@@ -44,7 +44,6 @@ export async function POST(req: Request) {
 
     if (error) throw error;
     
-    await supabaseAdmin.rpc('increment_total_reports');
     return NextResponse.json({ success: true });
   } catch (err) {
     const error = err as Error;
@@ -152,6 +151,13 @@ export async function PATCH(req: Request) {
       .eq('id', id);
 
     if (error) throw error;
+
+    if (is_visible === true) {
+        await supabaseAdmin.rpc('increment_total_reports');
+    } else if (is_visible === false) {
+        await supabaseAdmin.rpc('decrement_total_reports');
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     const error = err as Error;
