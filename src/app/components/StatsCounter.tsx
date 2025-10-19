@@ -64,7 +64,7 @@ export default function StatsCounter() {
             <FaBullhorn className="text-red-500 h-12 w-12 flex-shrink-0" />
             <div>
               {stats && <AnimatedNumber toValue={stats.total} />}
-              <h3 className="text-muted-foreground mt-1">Подадени сигнали</h3>
+              <h3 className="text-muted-foreground mt-1">Подадени сигнала</h3>
             </div>
           </motion.div>
 
@@ -78,7 +78,7 @@ export default function StatsCounter() {
             <FaCheckDouble className="text-green-500 h-12 w-12 flex-shrink-0" />
             <div>
               {stats && <AnimatedNumber toValue={stats.resolved} />}
-              <h3 className="text-muted-foreground mt-1">Разрешени сигнали</h3>
+              <h3 className="text-muted-foreground mt-1">Разрешени сигнала</h3>
             </div>
           </motion.div>
 

@@ -146,7 +146,7 @@ export default function AdminPage() {
   
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    router.push('/');
   };
 
   if (loading) {
@@ -242,7 +242,7 @@ export default function AdminPage() {
                       <div>
                         <h4 className="font-semibold mb-1">Тип на сигнала:</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          report.type === 'Разрешен сигнал' ? 'bg-green-500/20 text-green-200' : 'bg-red-500/20 text-red-200'
+                          report.type === 'Разрешен сигнал' ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-300'
                         }`}>
                           {report.type}
                         </span>
