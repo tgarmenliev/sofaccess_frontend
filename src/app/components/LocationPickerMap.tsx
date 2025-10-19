@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L, { LatLng } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -14,7 +14,17 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
-// Bounding box for Sofia coordinates, same as in the report page
+const userLocationIcon = new L.DivIcon({
+  html: `<div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+           <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: #3b82f6; opacity: 0.3;"></div>
+           <div style="position: relative; width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; border: 2px solid white;"></div>
+         </div>`,
+  className: "",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
+
 const SOFIA_BOUNDING_BOX = {
   minLat: 42.63,
   maxLat: 42.75,
@@ -36,7 +46,7 @@ interface LocationPickerMapProps {
   onLocationSelect: (coords: { lat: number, lng: number }, address: string) => void;
 }
 
-// Component to handle map clicks
+// Component to handle map click events
 function MapEvents({ onMapClick }: { onMapClick: (position: LatLng) => void }) {
   useMapEvents({
     click(e) {
@@ -46,9 +56,17 @@ function MapEvents({ onMapClick }: { onMapClick: (position: LatLng) => void }) {
   return null;
 }
 
-// Component for location button
+// Component for centering the map on user's location
 function CenterOnUserButton({ onGeolocationError }: { onGeolocationError: (message: string) => void }) {
   const map = useMap();
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (buttonRef.current) {
+      L.DomEvent.disableClickPropagation(buttonRef.current);
+    }
+  }, []);
+
   const handleCenter = () => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -70,7 +88,7 @@ function CenterOnUserButton({ onGeolocationError }: { onGeolocationError: (messa
   };
 
   return (
-    <div className="absolute bottom-5 right-5 z-[1000]">
+    <div ref={buttonRef} className="absolute bottom-5 right-5 z-[1000]">
        <button
           onClick={handleCenter}
           className="backdrop-blur-lg bg-white/50 dark:bg-black/50 border border-white/30 dark:border-black/30 text-foreground p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
@@ -84,8 +102,24 @@ function CenterOnUserButton({ onGeolocationError }: { onGeolocationError: (messa
 
 export default function LocationPickerMap({ onClose, onLocationSelect }: LocationPickerMapProps) {
   const [markerPosition, setMarkerPosition] = useState<LatLng | null>(null);
+  const [currentUserPosition, setCurrentUserPosition] = useState<LatLng | null>(null);
   const [address, setAddress] = useState("Кликнете върху картата, за да изберете място...");
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (isWithinSofia(latitude, longitude)) {
+          setCurrentUserPosition(new LatLng(latitude, longitude));
+        }
+      },
+      (err) => {
+        console.warn("Geolocation not available on map load:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+    );
+  }, []);
 
   const handleToastError = (message: string) => {
     toast.custom((t) => (
@@ -159,7 +193,12 @@ export default function LocationPickerMap({ onClose, onLocationSelect }: Locatio
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         <MapEvents onMapClick={handleMapClick} />
+        
         {markerPosition && <Marker position={markerPosition} />}
+
+        {currentUserPosition && (
+          <Marker position={currentUserPosition} icon={userLocationIcon} />
+        )}
 
         <CenterOnUserButton onGeolocationError={handleToastError} />
       </MapContainer>
@@ -171,7 +210,7 @@ export default function LocationPickerMap({ onClose, onLocationSelect }: Locatio
         <button 
           onClick={handleConfirm}
           disabled={!markerPosition || isLoadingAddress}
-          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-full font-semibold shadow-lg hover:bg-primary transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-full font-semibold shadow-lg hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <FaCheck /> Готово
         </button>
