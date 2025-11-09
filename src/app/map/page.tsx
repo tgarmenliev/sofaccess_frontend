@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { FaMapMarkerAlt, FaExclamationTriangle, FaListUl, FaCheckCircle, FaLocationArrow } from "react-icons/fa";
+import { FaMapMarkerAlt, FaExclamationTriangle, FaListUl, FaCheckCircle, FaLocationArrow, FaTimes } from "react-icons/fa";
 import dynamic from "next/dynamic";
 import toast, { Toaster } from 'react-hot-toast';
 import type { MapComponentHandle } from "../components/Map";
@@ -174,7 +174,6 @@ export default function MapPage() {
                 Разрешени сигнали
             </button>
         </div>
-        {/* The component is now called inside the sidebar without a margin-top */}
         <div className="mt-8">
             <ReportList onReportClick={(report) => setSelectedReport(report)} />
         </div>
@@ -206,17 +205,26 @@ export default function MapPage() {
         onClick={() => setIsMobileSheetOpen(false)}
       />
 
-      {/* Corrected Mobile Bottom Sheet */}
+      {isMobileSheetOpen && (
+        <button
+          onClick={() => setIsMobileSheetOpen(false)}
+          className="md:hidden fixed top-20 right-6 z-50 backdrop-blur-lg bg-white/50 dark:bg-black/50 border border-white/30 dark:border-black/30 text-foreground p-3 rounded-full shadow-lg hover:scale-110 transition-all animate-slide-in-down"
+          aria-label="Затвори"
+        >
+          <FaTimes size={20} />
+        </button>
+      )}
+
       <div
         className={`md:hidden fixed bottom-4 left-4 right-4 z-40 backdrop-blur-lg bg-white/80 dark:bg-black/80 border border-white/30 dark:border-black/30 rounded-2xl shadow-2xl transition-all duration-500 ease-in-out flex flex-col ${
           isMobileSheetOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full pointer-events-none"
         }`}
-        style={{ maxHeight: 'calc(100vh - 8rem)' }} // Increased top margin
+        style={{ maxHeight: '75vh' }}
       >
         <div className="flex-shrink-0 p-4 border-b border-border">
           <div className="w-16 h-1.5 bg-muted rounded-full mx-auto" />
         </div>
-        <div className="overflow-y-auto p-4"> {/* The scrollable area with padding */}
+        <div className="overflow-y-auto p-4">
           <ReportList onReportClick={handleMobileReportSelect} />
         </div>
       </div>
