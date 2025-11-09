@@ -50,7 +50,7 @@ export default function ReportPage() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [reportType, setReportType] = useState("Разбит тротоар");
 
-  const isFormReady = !loading && coords && file;
+  const isFormReady = !loading && coords;
 
   const formatAddress = (item: NominatimSuggestion): string => {
     if (item.address) {
