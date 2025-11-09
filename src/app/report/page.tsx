@@ -3,6 +3,7 @@ import { useState, useRef, Fragment } from "react";
 import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle, FaMap, FaQuestionCircle } from "react-icons/fa";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import imageCompression from 'browser-image-compression';
 
 const LocationPickerMap = dynamic(() => import("../components/LocationPickerMap"), {
   ssr: false,
@@ -50,7 +51,7 @@ export default function ReportPage() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [reportType, setReportType] = useState("Разбит тротоар");
 
-  const isFormReady = !loading && coords;
+  const isFormReady = !loading && coords && file;
 
   const formatAddress = (item: NominatimSuggestion): string => {
     if (item.address) {
@@ -147,6 +148,19 @@ export default function ReportPage() {
     try {
       const form = e.currentTarget;
       const fd = new FormData();
+
+      if (file) {
+        const options = {
+          maxSizeMB: 2,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+
+        const compressedFile = await imageCompression(file, options);
+        
+        fd.append("file", compressedFile, file.name);
+      }
+
       fd.append("address", address);
       fd.append("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
       fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
