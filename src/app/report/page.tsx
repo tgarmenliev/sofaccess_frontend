@@ -3,7 +3,7 @@ import { useState, useRef, Fragment } from "react";
 import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle, FaMap, FaQuestionCircle } from "react-icons/fa";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import imageCompression from 'browser-image-compression';
+import heic2any from "heic2any";
 
 const LocationPickerMap = dynamic(() => import("../components/LocationPickerMap"), {
   ssr: false,
@@ -39,17 +39,85 @@ interface NominatimSuggestion {
   }
 }
 
+const defaultFileText = "Качи файл (Задължително)";
+
+const compressImageWithCanvas = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const MAX_WIDTH_HEIGHT = 1920;
+    const QUALITY = 0.7;
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH_HEIGHT) {
+            height *= MAX_WIDTH_HEIGHT / width;
+            width = MAX_WIDTH_HEIGHT;
+          }
+        } else {
+          if (height > MAX_WIDTH_HEIGHT) {
+            width *= MAX_WIDTH_HEIGHT / height;
+            height = MAX_WIDTH_HEIGHT;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          return reject(new Error("Неуспешно създаване на платно за снимка."));
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            return reject(new Error("Неуспешно конвертиране на снимка."));
+          }
+          
+          const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+
+          console.log(`Финално компресиран файл: ${newFile.size / 1024 / 1024} MB`);
+
+          if (newFile.size > 4 * 1024 * 1024) {
+            return reject(new Error("Снимката е твърде голяма дори след компресия."));
+          }
+          resolve(newFile);
+        }, 'image/jpeg', QUALITY);
+      };
+      img.onerror = () => reject(new Error("Непознат формат на изображение."));
+    };
+    reader.onerror = () => reject(new Error("Неуспешно четене на файла."));
+  });
+};
+
+
 export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState("");
   const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [fileLabel, setFileLabel] = useState(defaultFileText);
   const [locationMessage, setLocationMessage] = useState<{ text: string; type: "error" | "warning" } | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [reportType, setReportType] = useState("Разбит тротоар");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFormReady = !loading && coords && file;
 
@@ -138,52 +206,80 @@ export default function ReportPage() {
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setLoading(true);
+    setSubmitMessage({ text: "Обработка на снимка...", type: "success" });
+    setFile(null);
+    setFileLabel(selectedFile.name);
+
+    try {
+      let fileToProcess = selectedFile;
+
+      if (fileToProcess.type === 'image/heic' || fileToProcess.type === 'image/heif' || fileToProcess.name.toLowerCase().endsWith('.heic')) {
+        setSubmitMessage({ text: "Конвертиране на HEIC...", type: "success" });
+        const convertedBlob = await heic2any({
+          blob: fileToProcess,
+          toType: "image/jpeg",
+          quality: 0.8,
+        }) as Blob;
+        fileToProcess = new File([convertedBlob], selectedFile.name.replace(/\.[^/.]+$/, ".jpg"), { type: 'image/jpeg' });
+      }
+
+      setSubmitMessage({ text: "Компресиране на снимка...", type: "success" });
+      const compressedFile = await compressImageWithCanvas(fileToProcess);
+
+      setFile(compressedFile);
+      setFileLabel(compressedFile.name);
+      setSubmitMessage(null);
+
+    } catch (err) {
+      const error = err as Error;
+      console.error("Image processing error:", error);
+      setSubmitMessage({ text: `Грешка: Не можем да обработим тази снимка. Моля, опитайте със скрийншот.`, type: "error" });
+      setFile(null);
+      setFileLabel(defaultFileText);
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!isFormReady) return;
 
     setLoading(true);
-    setSubmitMessage(null);
+    setSubmitMessage({ text: "Изпращане на сигнал...", type: "success" });
 
     try {
       const form = e.currentTarget;
       const fd = new FormData();
 
-      if (file) {
-        const options = {
-          maxSizeMB: 1.5,
-          maxWidthOrHeight: 1280,
-          useWebWorker: true,
-        };
-
-        const compressedFile = await imageCompression(file, options);
-
-        if (compressedFile.size > 4 * 1024 * 1024) {
-            throw new Error("Снимката е твърде голяма дори след компресия.");
-        }
-        
-        fd.append("file", compressedFile, file.name);
-      }
-
+      fd.append("file", file as File, file!.name); 
       fd.append("address", address);
       fd.append("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
       fd.append("type", (form.elements.namedItem("barrier-type") as HTMLSelectElement).value);
       fd.append("lat", String(coords?.lat));
       fd.append("lng", String(coords?.lng));
-      if (file) fd.append("file", file);
 
       const res = await fetch("/api/reports", { method: "POST", body: fd });
-
+      
       if (!res.ok) {
         throw new Error(`Грешка от сървъра: ${res.status}`);
       }
 
       const data = await res.json();
 
-      if (res.ok) {
-        setSubmitMessage({ text: "Сигналът ви е изпратен за одобрение от администратор!", type: "success" });
+      if (data.success) {
+        setSubmitMessage({ text: "Сигналът ви е изпратен за одобрение!", type: "success" });
         form.reset();
         setFile(null);
+        setFileLabel(defaultFileText);
         setAddress("");
         setCoords(null);
         setReportType("Разбит тротоар");
@@ -193,11 +289,10 @@ export default function ReportPage() {
     } catch (err) {
       const error = err as Error;
       console.error("Submit error:", error);
-      
       if (error.message.includes("413") || error.message.includes("JSON")) {
-         setSubmitMessage({ text: "Грешка: Файлът е твърде голям. Моля, опитайте с друга снимка или скрийншот.", type: "error" });
+         setSubmitMessage({ text: "Грешка: Файлът е твърде голям. Моля, опитайте друга снимка.", type: "error" });
       } else {
-         setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
+         setSubmitMessage({ text: `Възникна грешка при изпращане.`, type: "error" });
       }
     } finally {
       setLoading(false);
@@ -282,7 +377,7 @@ export default function ReportPage() {
                 )}
               </div>
             </div>
-
+            
             <div>
               <div className="flex items-center text-primary mb-2">
                 <FaExclamationTriangle className="h-6 w-6 mr-2" />
@@ -334,11 +429,12 @@ export default function ReportPage() {
                   name="file-upload"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={handleFileChange}
                   className="sr-only"
+                  ref={fileInputRef}
                 />
                 <label htmlFor="file-upload" className="cursor-pointer text-primary hover:text-blue-700">
-                  {file ? file.name : "Качи файл"}
+                  {fileLabel}
                 </label>
               </div>
             </div>
@@ -358,11 +454,11 @@ export default function ReportPage() {
 
             <button
               type="submit"
-              disabled={!isFormReady}
-              className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed ${isFormReady ? 'hover:scale-105 animate-pulse' : ''}`}
+              disabled={!isFormReady || loading}
+              className={`group relative w-full flex justify-center py-3 px-4 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform disabled:bg-gray-400 disabled:cursor-not-allowed ${isFormReady && !loading ? 'hover:scale-105 animate-pulse' : ''}`}
             >
-              <FaPaperPlane className={`mr-2 ${isFormReady ? 'animate-bounce' : ''}`} />
-              {loading ? "Изпращане..." : "Изпрати сигнал"}
+              <FaPaperPlane className={`mr-2 ${isFormReady && !loading ? 'animate-bounce' : ''}`} />
+              {loading ? "Обработка..." : "Изпрати сигнал"}
             </button>
           </form>
         </div>
