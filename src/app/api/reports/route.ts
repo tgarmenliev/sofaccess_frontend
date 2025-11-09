@@ -85,6 +85,13 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: false, error: "Invalid IDs provided" }, { status: 400 });
     }
 
+    const { data: reports, error: fetchError } = await supabaseAdmin
+      .from("reports")
+      .select('id, type, is_visible')
+      .in('id', ids);
+
+    if (fetchError) throw fetchError;
+
     const { error } = await supabaseAdmin
       .from("reports")
       .update({ type: "Разрешен сигнал", updated_at: new Date().toISOString() })
@@ -92,7 +99,18 @@ export async function PUT(req: Request) {
 
     if (error) throw error;
 
-    await supabaseAdmin.rpc('increment_resolved_reports', { count: ids.length });
+    let newResolvedCount = 0;
+    for (const report of reports) {
+      const wasResolved = report.type === 'Разрешен' || report.type === 'Разрешен сигнал';
+      if (report.is_visible && !wasResolved) { 
+        newResolvedCount++;
+      }
+    }
+    
+    if (newResolvedCount > 0) {
+      await supabaseAdmin.rpc('increment_resolved_reports', { count: newResolvedCount });
+    }
+    
     return NextResponse.json({ success: true });
   } catch (err) {
     const error = err as Error;
@@ -109,13 +127,41 @@ export async function DELETE(req: Request) {
     if (!id) {
       return NextResponse.json({ success: false, error: "ID is required" }, { status: 400 });
     }
+    
+    const { data: reportToDelete, error: fetchError } = await supabaseAdmin
+      .from("reports")
+      .select('is_visible, image_url, type')
+      .eq('id', id)
+      .single();
 
-    const { error } = await supabaseAdmin
+    if (fetchError) {
+      console.warn(`Report with id ${id} not found, might be already deleted.`);
+    }
+
+    if (reportToDelete && reportToDelete.image_url) {
+      try {
+        const url = new URL(reportToDelete.image_url);
+        const filePath = decodeURIComponent(url.pathname.split('/report-images/')[1]);
+        await supabaseAdmin.storage.from('report-images').remove([filePath]);
+      } catch (e) {
+        console.error("Error deleting from storage:", e);
+      }
+    }
+
+    const { error: deleteError } = await supabaseAdmin
       .from("reports")
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (deleteError) throw deleteError;
+
+    if (reportToDelete && reportToDelete.is_visible) {
+      await supabaseAdmin.rpc('decrement_total_reports');
+      const wasResolved = reportToDelete.type === 'Разрешен' || reportToDelete.type === 'Разрешен сигнал';
+      if (wasResolved) {
+        await supabaseAdmin.rpc('decrement_resolved_reports', { count: 1 });
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -137,13 +183,16 @@ export async function PATCH(req: Request) {
         updated_at: new Date().toISOString()
     };
 
-    if (sent !== undefined) {
-        updateData.sent = sent;
-    }
+    if (sent !== undefined) updateData.sent = sent;
+    if (is_visible !== undefined) updateData.is_visible = is_visible;
 
-    if (is_visible !== undefined) {
-        updateData.is_visible = is_visible;
-    }
+    const { data: report, error: fetchError } = await supabaseAdmin
+      .from("reports")
+      .select('type, is_visible')
+      .eq('id', id)
+      .single();
+      
+    if (fetchError) throw fetchError;
 
     const { error } = await supabaseAdmin
       .from("reports")
@@ -151,11 +200,21 @@ export async function PATCH(req: Request) {
       .eq('id', id);
 
     if (error) throw error;
+    
+    if (is_visible !== undefined) {
+      const isResolved = report.type === 'Разрешен' || report.type === 'Разрешен сигнал';
 
-    if (is_visible === true) {
+      if (is_visible === true && report.is_visible === false) {
         await supabaseAdmin.rpc('increment_total_reports');
-    } else if (is_visible === false) {
+        if (isResolved) {
+          await supabaseAdmin.rpc('increment_resolved_reports', { count: 1 });
+        }
+      } else if (is_visible === false && report.is_visible === true) {
         await supabaseAdmin.rpc('decrement_total_reports');
+        if (isResolved) {
+          await supabaseAdmin.rpc('decrement_resolved_reports', { count: 1 });
+        }
+      }
     }
 
     return NextResponse.json({ success: true });
