@@ -3,7 +3,7 @@ import { useState, useRef, Fragment } from "react";
 import { FaMapPin, FaLocationArrow, FaExclamationTriangle, FaCamera, FaPaperPlane, FaCheckCircle, FaMap, FaQuestionCircle } from "react-icons/fa";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import heic2any from "heic2any";
+//import heic2any from "heic2any";
 
 const LocationPickerMap = dynamic(() => import("../components/LocationPickerMap"), {
   ssr: false,
@@ -220,6 +220,9 @@ export default function ReportPage() {
 
       if (fileToProcess.type === 'image/heic' || fileToProcess.type === 'image/heif' || fileToProcess.name.toLowerCase().endsWith('.heic')) {
         setSubmitMessage({ text: "Конвертиране на HEIC...", type: "success" });
+        
+        const heic2any = (await import('heic2any')).default;
+
         const convertedBlob = await heic2any({
           blob: fileToProcess,
           toType: "image/jpeg",
