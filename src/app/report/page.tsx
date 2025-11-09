@@ -151,12 +151,16 @@ export default function ReportPage() {
 
       if (file) {
         const options = {
-          maxSizeMB: 2,
-          maxWidthOrHeight: 1920,
+          maxSizeMB: 1.5,
+          maxWidthOrHeight: 1280,
           useWebWorker: true,
         };
 
         const compressedFile = await imageCompression(file, options);
+
+        if (compressedFile.size > 4 * 1024 * 1024) {
+            throw new Error("Снимката е твърде голяма дори след компресия.");
+        }
         
         fd.append("file", compressedFile, file.name);
       }
@@ -169,6 +173,11 @@ export default function ReportPage() {
       if (file) fd.append("file", file);
 
       const res = await fetch("/api/reports", { method: "POST", body: fd });
+
+      if (!res.ok) {
+        throw new Error(`Грешка от сървъра: ${res.status}`);
+      }
+
       const data = await res.json();
 
       if (res.ok) {
@@ -184,7 +193,12 @@ export default function ReportPage() {
     } catch (err) {
       const error = err as Error;
       console.error("Submit error:", error);
-      setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
+      
+      if (error.message.includes("413") || error.message.includes("JSON")) {
+         setSubmitMessage({ text: "Грешка: Файлът е твърде голям. Моля, опитайте с друга снимка или скрийншот.", type: "error" });
+      } else {
+         setSubmitMessage({ text: `Възникна грешка: ${error.message}`, type: "error" });
+      }
     } finally {
       setLoading(false);
     }
