@@ -6,6 +6,7 @@ import { Inter, Sofia_Sans } from "next/font/google";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { usePathname } from "next/navigation";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const sofiaSans = Sofia_Sans({
@@ -31,6 +32,7 @@ export default function RootLayout({
         <Navbar />
         <main className={isHomePage ? "" : "pt-16"}>{children}</main>
         <Footer />
+        <SpeedInsights />
       </body>
     </html>
   );
