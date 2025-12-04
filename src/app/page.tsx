@@ -75,21 +75,34 @@ export default function LandingPage() {
 
           {/* Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaMapMarkedAlt className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Открий маршрути</h3>
-              <p className="text-muted-foreground">Намерете безопасни и достъпни маршрути в цяла София.</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaExclamationTriangle className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Докладвай проблем</h3>
-              <p className="text-muted-foreground">Съобщете за препятствия и помогнете на общността.</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong transition">
-              <FaUsers className="text-primary h-10 w-10 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Общност</h3>
-              <p className="text-muted-foreground">Присъединете се към граждани, които изграждат по-добра София.</p>
-            </div>
+            
+            {/* Card 1: Map */}
+            <Link href="/map" className="block h-full">
+              <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong hover:scale-[1.02] transition-all duration-300 h-full cursor-pointer group">
+                <FaMapMarkedAlt className="text-primary h-10 w-10 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">Виж картата</h3>
+                <p className="text-muted-foreground">И намери безопасни и достъпни маршрути в цяла София.</p>
+              </div>
+            </Link>
+
+            {/* Card 2: Report */}
+            <Link href="/report" className="block h-full">
+              <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong hover:scale-[1.02] transition-all duration-300 h-full cursor-pointer group">
+                <FaExclamationTriangle className="text-primary h-10 w-10 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">Докладвай проблем</h3>
+                <p className="text-muted-foreground">Съобщи за препятствия и помогни на общността.</p>
+              </div>
+            </Link>
+
+            {/* Card 3: About/Community */}
+            <Link href="/about" className="block h-full">
+              <div className="p-6 rounded-2xl bg-background/60 backdrop-blur-sm shadow-lg border border-border hover:shadow-strong hover:scale-[1.02] transition-all duration-300 h-full cursor-pointer group">
+                <FaUsers className="text-primary h-10 w-10 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors">Общност</h3>
+                <p className="text-muted-foreground">Присъедини се към гражданите, които изграждат по-добра София.</p>
+              </div>
+            </Link>
+
           </div>
         </div>
       </section>
