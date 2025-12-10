@@ -7,6 +7,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { usePathname } from "next/navigation";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const sofiaSans = Sofia_Sans({
@@ -33,6 +34,7 @@ export default function RootLayout({
         <main className={isHomePage ? "" : "pt-16"}>{children}</main>
         <Footer />
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
