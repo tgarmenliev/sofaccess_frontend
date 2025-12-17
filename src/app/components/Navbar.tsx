@@ -12,21 +12,18 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Scroll threshold
       const isScrolled = window.scrollY > window.innerHeight * 0.8; 
       setScrolled(isScrolled);
     };
 
     window.addEventListener("scroll", handleScroll);
-    handleScroll(); // Initial check
+    handleScroll(); 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const isHomePage = pathname === "/";
-  // Determine if the navbar should have a visible background
   const hasBackground = !isHomePage || scrolled; 
 
-  // --- Color Logic ---
   const textColor = hasBackground ? "text-foreground" : "text-white"; 
   const logoTextColor = hasBackground ? "text-primary" : "text-white";
   const mobileTextColor = "text-foreground dark:text-white"; 
@@ -43,32 +40,41 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Section */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-1 group">
+            
+            <div className="relative w-12 h-12 flex-shrink-0">
+               <Image
+                 src="/hat.png" 
+                 alt="Christmas Hat"
+                 width={56} 
+                 height={56}
+                 className="object-contain"
+                 priority
+               />
+            </div>
+
             <div className="relative w-6 h-6 group-hover:scale-110 transition-transform duration-300">
-              {/* Blue Logo (Visible in Light mode with background, Hidden otherwise) */}
               <Image
                 src="/PinLogo.png" 
                 alt="SOFaccess Logo Pin"
                 width={24}
                 height={24}
-                // Visible only when background exists AND in light mode. Hidden in dark mode.
                 className={`absolute inset-0 transition-opacity duration-300 ${
                   hasBackground ? 'opacity-100' : 'opacity-0' 
-                } dark:opacity-0`} // Force hidden in dark mode
+                } dark:opacity-0`} 
               />
-              {/* White Logo (Visible in Dark mode always, Visible in Light mode without background) */}
               <Image
                 src="/PinLogo-white.png"
                 alt="SOFaccess Logo Pin White"
                 width={24}
                 height={24}
-                // Visible when background is transparent OR when in dark mode.
                  className={`absolute inset-0 transition-opacity duration-300 ${
                   hasBackground ? 'opacity-0' : 'opacity-100' 
-                 } dark:opacity-100`} // Force visible in dark mode
+                 } dark:opacity-100`} 
               />
             </div>
-            <span className={`font-sofia text-2xl font-bold transition-colors duration-300 ${logoTextColor}`}>
+
+            <span className={`font-sofia text-2xl font-bold transition-colors duration-300 ml-1 ${logoTextColor}`}>
               SOFaccess
             </span>
           </Link>

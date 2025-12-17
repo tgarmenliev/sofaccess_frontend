@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FaWheelchair, FaBabyCarriage, FaBlind, FaMapMarkedAlt, FaExclamationTriangle, FaUsers, FaShieldAlt } from "react-icons/fa";
 import Image from "next/image";
 import StatsCounter from "./components/StatsCounter";
+import ChristmasHero from "./components/ChristmasHero";
 
 export default function LandingPage() {
   return (
@@ -16,6 +17,8 @@ export default function LandingPage() {
           priority
         />
         <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-primary/30 backdrop-blur-sm" />
+
+        <ChristmasHero />
 
         <div className="relative z-10 text-center max-w-3xl px-4 md:px-6">
           <h1 className="font-sofia font-extrabold text-5xl md:text-6xl lg:text-7xl text-white drop-shadow-lg break-words text-balance">
