@@ -42,10 +42,10 @@ const Navbar = () => {
           {/* Logo Section */}
           <Link href="/" className="flex items-center gap-1 group">
             
-            <div className="relative w-12 h-12 flex-shrink-0">
+            <div className="relative unoptimized w-12 h-12 flex-shrink-0">
                <Image
-                 src="/hat.png" 
-                 alt="Christmas Hat"
+                 src="/fireworks.gif" 
+                 alt="Fireworks Animation"
                  width={56} 
                  height={56}
                  className="object-contain"

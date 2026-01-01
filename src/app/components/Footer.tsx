@@ -7,7 +7,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Left */}
           <p className="text-sm text-muted-foreground">
-            &copy; 2025 SOFaccess. Всички права запазени.
+            &copy; 2026 SOFaccess. Всички права запазени.
           </p>
 
           {/* Center */}
