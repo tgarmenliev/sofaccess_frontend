@@ -41,17 +41,6 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo Section */}
           <Link href="/" className="flex items-center gap-1 group">
-            
-            <div className="relative unoptimized w-12 h-12 flex-shrink-0">
-               <Image
-                 src="/fireworks.gif" 
-                 alt="Fireworks Animation"
-                 width={56} 
-                 height={56}
-                 className="object-contain"
-                 priority
-               />
-            </div>
 
             <div className="relative w-6 h-6 group-hover:scale-110 transition-transform duration-300">
               <Image

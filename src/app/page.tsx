@@ -18,7 +18,7 @@ export default function LandingPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-primary/30 backdrop-blur-sm" />
 
-        <ChristmasHero />
+        {/* <ChristmasHero /> */}
 
         <div className="relative z-10 text-center max-w-3xl px-4 md:px-6">
           <h1 className="font-sofia font-extrabold text-5xl md:text-6xl lg:text-7xl text-white drop-shadow-lg break-words text-balance">
