@@ -4,9 +4,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useInView, animate, motion } from "framer-motion";
-import { FaBullhorn, FaCheckDouble } from "react-icons/fa";
+import { FaBullhorn } from "react-icons/fa";
 
-// A reusable component for the animated number
 function AnimatedNumber({ toValue }: { toValue: number }) {
   const nodeRef = useRef<HTMLParagraphElement>(null);
 
@@ -24,14 +23,12 @@ function AnimatedNumber({ toValue }: { toValue: number }) {
     return () => controls.stop();
   }, [toValue]);
 
-  return <p ref={nodeRef} className="text-4xl md:text-5xl font-bold font-sofia" />;
+  return <p ref={nodeRef} className="text-4xl md:text-5xl font-bold font-sofia text-foreground" />;
 }
-
 
 export default function StatsCounter() {
   const [stats, setStats] = useState<{ total: number; resolved: number } | null>(null);
   const ref = useRef(null);
-  // This hook returns true when the component is in the viewport
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   useEffect(() => {
@@ -50,26 +47,35 @@ export default function StatsCounter() {
   }, []);
 
   return (
-    <section ref={ref} className="py-20 bg-background">
+    <section ref={ref} className="py-16 bg-background">
       <div className="max-w-4xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div className="flex justify-center w-full">
           
           {/* Total Submitted Stat */}
           <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex items-center gap-6 p-8 bg-muted/50 rounded-2xl border border-border"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col md:flex-row items-center gap-5 px-8 py-6 bg-white dark:bg-muted/30 rounded-2xl border border-border shadow-lg backdrop-blur-sm"
           >
-            <FaBullhorn className="text-red-500 h-12 w-12 flex-shrink-0" />
-            <div>
-              {stats && <AnimatedNumber toValue={stats.total} />}
-              <h3 className="text-muted-foreground mt-1">Подадени сигнала</h3>
+            <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
+               <FaBullhorn className="text-red-600 dark:text-red-500 h-8 w-8 md:h-9 md:w-9" />
+            </div>
+            
+            <div className="text-center md:text-left">
+              {stats ? (
+                <AnimatedNumber toValue={stats.total} />
+              ) : (
+                <p className="text-4xl md:text-5xl font-bold font-sofia text-foreground">...</p>
+              )}
+              <h3 className="text-base md:text-lg text-muted-foreground font-medium">
+                Картографирани проблема
+              </h3>
             </div>
           </motion.div>
 
-          {/* Total Resolved Stat */}
-          <motion.div 
+          {/* <motion.div 
             initial={{ opacity: 0, y: 50 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -80,7 +86,8 @@ export default function StatsCounter() {
               {stats && <AnimatedNumber toValue={stats.resolved} />}
               <h3 className="text-muted-foreground mt-1">Разрешени сигнала</h3>
             </div>
-          </motion.div>
+          </motion.div> 
+          */}
 
         </div>
       </div>
