@@ -24,7 +24,6 @@ function AnimatedNumber({ toValue }: { toValue: number }) {
     return () => controls.stop();
   }, [toValue]);
 
-  // Използваме text-foreground за автоматичен цвят според темата
   return <p ref={nodeRef} className="text-5xl md:text-6xl font-extrabold font-sofia tracking-tight text-foreground" />;
 }
 
@@ -49,11 +48,8 @@ export default function StatsCounter() {
   }, []);
 
   return (
-    // FIX 1: Махнахме фоновия цвят на секцията (сега е прозрачна). 
-    // FIX 2: Намалихме py-20 на py-8 за по-малко разстояние.
     <section ref={ref} className="relative py-8 w-full bg-transparent">
       
-      {/* Декоративно сияние САМО зад картата (центрирано) */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[100px] bg-red-500/10 dark:bg-red-500/20 blur-[60px] rounded-full pointer-events-none -z-10" />
 
       <div className="max-w-4xl mx-auto px-4">
@@ -64,10 +60,6 @@ export default function StatsCounter() {
             animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
             transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
             
-            // === СТЪКЛЕНАТА КАРТА ===
-            // Light: Бяла, леко прозрачна (bg-white/60)
-            // Dark: Тъмна, леко прозрачна (bg-black/40) или (bg-slate-900/50)
-            // Blur: backdrop-blur-lg прави магията
             className="
               flex flex-col md:flex-row items-center gap-6 px-10 py-6
               bg-white/60 dark:bg-black/40 
@@ -77,7 +69,6 @@ export default function StatsCounter() {
               rounded-3xl
             "
           >
-            {/* Иконата */}
             <div className="
               flex items-center justify-center
               w-16 h-16 md:w-20 md:h-20
