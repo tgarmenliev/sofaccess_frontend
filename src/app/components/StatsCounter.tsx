@@ -15,6 +15,7 @@ function AnimatedNumber({ toValue }: { toValue: number }) {
 
     const controls = animate(0, toValue, {
       duration: 2,
+      ease: "easeOut",
       onUpdate(value) {
         node.textContent = Math.round(value).toLocaleString("bg-BG");
       },
@@ -23,13 +24,14 @@ function AnimatedNumber({ toValue }: { toValue: number }) {
     return () => controls.stop();
   }, [toValue]);
 
-  return <p ref={nodeRef} className="text-4xl md:text-5xl font-bold font-sofia text-foreground" />;
+  // Използваме text-foreground за автоматичен цвят според темата
+  return <p ref={nodeRef} className="text-5xl md:text-6xl font-extrabold font-sofia tracking-tight text-foreground" />;
 }
 
 export default function StatsCounter() {
-  const [stats, setStats] = useState<{ total: number; resolved: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number } | null>(null);
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
 
   useEffect(() => {
     async function fetchStats() {
@@ -47,47 +49,57 @@ export default function StatsCounter() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 bg-background">
-      <div className="max-w-4xl mx-auto px-6">
-        
+    // FIX 1: Махнахме фоновия цвят на секцията (сега е прозрачна). 
+    // FIX 2: Намалихме py-20 на py-8 за по-малко разстояние.
+    <section ref={ref} className="relative py-8 w-full bg-transparent">
+      
+      {/* Декоративно сияние САМО зад картата (центрирано) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[100px] bg-red-500/10 dark:bg-red-500/20 blur-[60px] rounded-full pointer-events-none -z-10" />
+
+      <div className="max-w-4xl mx-auto px-4">
         <div className="flex justify-center w-full">
           
-          {/* Total Submitted Stat */}
           <motion.div 
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col md:flex-row items-center gap-5 px-8 py-6 bg-white dark:bg-muted/30 rounded-2xl border border-border shadow-lg backdrop-blur-sm"
+            transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+            
+            // === СТЪКЛЕНАТА КАРТА ===
+            // Light: Бяла, леко прозрачна (bg-white/60)
+            // Dark: Тъмна, леко прозрачна (bg-black/40) или (bg-slate-900/50)
+            // Blur: backdrop-blur-lg прави магията
+            className="
+              flex flex-col md:flex-row items-center gap-6 px-10 py-6
+              bg-white/60 dark:bg-black/40 
+              backdrop-blur-lg 
+              border border-gray-200/50 dark:border-white/10 
+              shadow-xl dark:shadow-2xl
+              rounded-3xl
+            "
           >
-            <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
-               <FaBullhorn className="text-red-600 dark:text-red-500 h-8 w-8 md:h-9 md:w-9" />
+            {/* Иконата */}
+            <div className="
+              flex items-center justify-center
+              w-16 h-16 md:w-20 md:h-20
+              rounded-2xl
+              bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/10
+              border border-red-100/50 dark:border-red-500/20
+            ">
+               <FaBullhorn className="text-red-600 dark:text-red-400 h-7 w-7 md:h-9 md:w-9" />
             </div>
             
             <div className="text-center md:text-left">
               {stats ? (
                 <AnimatedNumber toValue={stats.total} />
               ) : (
-                <p className="text-4xl md:text-5xl font-bold font-sofia text-foreground">...</p>
+                <p className="text-5xl md:text-6xl font-extrabold font-sofia text-foreground animate-pulse">...</p>
               )}
-              <h3 className="text-base md:text-lg text-muted-foreground font-medium">
+              
+              <h3 className="text-sm md:text-base text-muted-foreground uppercase tracking-wider font-bold mt-1">
                 Картографирани проблема
               </h3>
             </div>
           </motion.div>
-
-          {/* <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="flex items-center gap-6 p-8 bg-muted/50 rounded-2xl border border-border"
-          >
-            <FaCheckDouble className="text-green-500 h-12 w-12 flex-shrink-0" />
-            <div>
-              {stats && <AnimatedNumber toValue={stats.resolved} />}
-              <h3 className="text-muted-foreground mt-1">Разрешени сигнала</h3>
-            </div>
-          </motion.div> 
-          */}
 
         </div>
       </div>
